@@ -1,0 +1,39 @@
+# Root .gitignore for multi-project repository
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*.user
+*.suo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+**/bin/
+**/obj/
+**/dist/
+**/build/
+**/out/
+
+# Dependencies
+**/node_modules/
+**/packages/
+**/.dart_tool/
+**/.pub-cache/
+**/.pub/
+
+# Secrets
+.env
+*.pfx
+*.keystore
+*.jks
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
