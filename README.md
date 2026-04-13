@@ -1,37 +1,42 @@
-# 🍔 FoodApp - Hệ Thống Đặt Đồ Ăn Trực Tuyến Tích Hợp AI & Location
+## 🚀 Hệ sinh thái M-CARS-Food (AI & Location)
 
-Đây là dự án được thiết kế chuẩn chỉnh từ đầu, phục vụ cho Đồ Án Cơ Sở và sẵn sàng mở rộng quy mô (Scale-up) để làm Đồ Án Chuyên Ngành sau này.
-Dự án được xây dựng dựa trên việc áp dụng các công nghệ hiện đại và kiến trúc tiên tiến.
+Dự án hiện đã được nâng cấp lên tầm nhìn **M-CARS-Food**, tập trung vào việc cá nhân hóa trải nghiệm người dùng thông qua Trí tuệ nhân tạo.
 
-## 🚀 Công nghệ sử dụng
-- **Backend:** .NET Core Web API (Sử dụng kiến trúc Clean Architecture / N-Tier để dễ dàng scale và thêm function lớn về sau).
-- **Frontend:** Angular 18 (Với Angular, bạn có thể build làm Web, hoặc dễ dàng port sang ứng dụng di động thông qua Ionic hoặc Capacitor).
-- **Định hướng phần mở rộng chuyên sâu (AI & Location):** 
-  - Tích hợp Location-based services (nhận gợi ý địa điểm qua GPS/Google Maps).
-  - Tích hợp chức năng nhận diện hình ảnh thức ăn bằng AI (ML.NET, Azure Cognitive hoặc custom model Python connect via REST/gRPC).
+### 🗺 Lộ trình phát triển đã triển khai:
 
-## 🗂 Cấu trúc thư mục (Folder Structure)
+#### Giai đoạn 1: Nền tảng Cơ sở
+- **Backend:** Cấu trúc Clean Architecture hoàn chỉnh.
+- **Entities:** `User`, `Restaurant` (Vendor), `FoodItem`, `Order`, `TrackingLog`.
+- **Frontend (Mobile):** Khởi tạo khung ứng dụng **Flutter** với Riverpod.
 
-Chúng ta có 2 phần chính là Backend và Frontend được tách biệt hoàn toàn để quản lý độc lập theo chuẩn kiến trúc Clean Architecture cho Backend:
+#### Giai đoạn 2: Ngữ cảnh & Tracking
+- **Location Service:** Tích hợp tọa độ (GPS) vào `Restaurant` và `TrackingLog`.
+- **Behavior Logging:** `TrackingService` đã sẵn sàng ghi lại thao tác Click/View của người dùng.
+
+#### Giai đoạn 3: AI Core (SCR Model)
+- **Module AICore:** Thiết lập khung cho mô hình **LSTM** (Sở thích dài hạn) và **Attention** (Sở thích ngắn hạn).
+- **Prediction:** Thuật toán dự đoán Top-N quán ăn dựa trên ngữ cảnh thực tế ($U, L, T$).
+
+#### Giai đoạn 4: Tối ưu
+- **Caching & Async:** Sẵn sàng tích hợp Redis và Background Services cho luồng Tracking nặng.
+
+---
+**Lưu ý kỹ thuật:** 
+Do môi trường terminal đang bị giới hạn truy cập ổ `D:`, vui lòng thực hiện các lệnh sau để đồng bộ hệ thống:
+1. `dotnet sln add Backend/AICore/AICore.csproj` (Thêm module AI vào Solution).
+2. `dotnet ef migrations add UpdateMCarsFoodCore -p Backend/Infrastructure -s Backend/API` (Cập nhật DB).
+3. `flutter pub get` (Trong thư mục Frontend/flutter).
+
+## 🗂 Cấu trúc thư mục mới (Folder Structure)
 
 ```text
 /
-├── Backend/                       # Chứa giải pháp (Solution) .NET Core
-│   ├── FoodApp.sln                # File Solution chính
-│   ├── API/                       # Lớp Presentation: Endpoints API (Controllers, Program.cs) - Nhận Request từ UI
-│   ├── Application/               # Lớp Ứng dụng: Chứa Use Cases, DTOs, Business Logic, Interfaces (Không phụ thuộc vào bất cứ UI hay DB nào)
-│   ├── Domain/                    # Lớp Cốt lõi: Chứa Entities, Value Objects, Enums, Exceptions cốt lõi của bài toán
-│   └── Infrastructure/            # Lớp Cơ sở hạ tầng: DbContext (Entity Framework), Repositories, kết nối Third-party APIs (AI/Location), Email, Auth
-│
-└── Frontend/                      # Chứa ứng dụng Web Angular
-    └── food-app-ui/               
-        ├── src/
-        │   ├── app/
-        │   │   ├── components/    # Chứa UI components tái sử dụng
-        │   │   ├── pages/         # Chứa các trang View màn hình
-        │   │   ├── core/          # Chứa Models, Services gọi API, Interceptors
-        │   │   └── shared/        # Các utils, pipes, directives dùng chung
-        │   └── assets/            
+├── Backend/           # .NET Core 9.0 (API, AICore, Domain, Infrastructure, Application)
+├── Database/          # Script SQL cho Supabase
+├── Frontend/          
+│   ├── flutter/       # Ứng dụng Mobile (Flutter + Supabase)
+│   └── angular/       # Ứng dụng Web (Angular)
+└── README.md
 ```
 
 ## 🧠 Kiến trúc Clean Architecture (Backend)
@@ -54,11 +59,22 @@ dotnet run
 ```
 Sau đó truy cập link `https://localhost:<port>/swagger` hiển thị trên terminal để xem và giao tiếp với API.
 
-### 2. Chạy Frontend
-Mở Terminal, đi vào thư mục Frontend/food-app-ui:
+### 2. Chạy Frontend Web (Angular)
+Mở Terminal, đi vào thư mục Frontend/angular:
 ```bash
-cd Frontend/food-app-ui
+cd Frontend/angular
 npm install
 npm start
 ```
+
+### 3. Chạy Frontend Mobile (Flutter)
+Mở Terminal, đi vào thư mục Frontend/flutter:
+```bash
+cd Frontend/flutter
+flutter pub get
+flutter run
+```
 Truy cập `http://localhost:4200/` trên trình duyệt.
+
+
+password supabase : Codenhalam123

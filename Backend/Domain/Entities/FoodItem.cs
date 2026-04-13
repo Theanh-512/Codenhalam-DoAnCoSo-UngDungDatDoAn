@@ -9,5 +9,8 @@ namespace Domain.Entities
         public bool IsAvailable { get; set; } = true;
         public int CategoryId { get; set; }
         public Category? Category { get; set; }
+        
+        public int RestaurantId { get; set; }
+        public Restaurant? Restaurant { get; set; }
     }
 }
