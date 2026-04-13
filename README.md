@@ -49,32 +49,40 @@ Sự phụ thuộc (Dependencies) của các project trong Backend được quy 
 
 Thiết kế này đặc biệt mạnh mẽ khi ở Đồ Án Chuyên Ngành bạn muốn nhúng thêm AI hoặc đổi Database, bạn chỉ cần sửa ở `Infrastructure` mà không làm thay đổi hay gây lỗi cho logic nghiệp vụ trong `Application`.
 
-## 🛠 Hướng dẫn phát triển cơ bản
+## 🛠 Hướng dẫn Clone và Khởi chạy (Dành cho máy mới)
 
-### 1. Chạy Backend
-Mở Terminal, đi vào thư mục Backend/API:
-```bash
+Dự án này đã được tự động hóa tối đa. Toàn bộ cơ sở dữ liệu đều được lưu trữ tập trung trên **Supabase Cloud**. Khi bạn clone về một máy tính hoàn toàn mới, dữ liệu tự hiển thị đẩy đủ mà không cần cấu hình SQL thủ công.
+
+### 1. Đồng bộ và Chạy Backend (.NET Core 9.0)
+Hệ thống được tích hợp **Auto-Migration & Data Seeding**. Mỗi khi Backend chạy lên, nó sẽ tự động nhận diện kết nối Database Supabase và bơm dữ liệu mặc định (tài khoản admin, nhà hàng) nếu DB còn trống.
+
+Mở Terminal và đi vào thư mục Backend/API:
+```powershell
 cd Backend/API
 dotnet run
 ```
-Sau đó truy cập link `https://localhost:<port>/swagger` hiển thị trên terminal để xem và giao tiếp với API.
+*Lưu ý: Bạn không cần phải chạy `dotnet ef database update` vì `Program.cs` đã được thiết lập để tự động chạy Migrate và Seed data khi gọi lệnh `dotnet run` (Sử dụng tệp `SeedData.cs`).*
 
-### 2. Chạy Frontend Web (Angular)
-Mở Terminal, đi vào thư mục Frontend/angular:
-```bash
+- URL API cho Frontend: `http://localhost:5149` (hoặc cổng hiển thị trong Terminal)
+- Dữ liệu có sẵn trên Supabase: Database `Codenhalam123`
+
+### 2. Chạy Frontend Mobile & Web (Flutter)
+Mở Terminal mới, đi vào thư mục Frontend/flutter:
+```powershell
+cd Frontend/flutter
+flutter pub get
+flutter run -d windows  # Hoặc -d chrome để chạy Web
+```
+
+### 🔐 Thông tin Tài khoản Mặc định (Seed Data)
+Hệ thống đã tự động tạo sẵn các tài khoản sau để bạn test đăng nhập (API Backend):
+- **Tài khoản Khách hàng**: `test1@gmail.com` / Pass: `123456`
+- **Tài khoản Admin (Quản trị)**: `admin@foodapp.com` / Pass: `123456` *(Tính năng: Vào thẳng Admin Dashboard)*
+
+### 3. Chạy Frontend Web Dự phòng (Angular - Nếu sử dụng)
+```powershell
 cd Frontend/angular
 npm install
 npm start
 ```
-
-### 3. Chạy Frontend Mobile (Flutter)
-Mở Terminal, đi vào thư mục Frontend/flutter:
-```bash
-cd Frontend/flutter
-flutter pub get
-flutter run
-```
 Truy cập `http://localhost:4200/` trên trình duyệt.
-
-
-password supabase : Codenhalam123

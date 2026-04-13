@@ -1,58 +1,55 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/providers/restaurant_provider.dart';
 import '../main/main_tab_screen.dart';
+import '../admin/admin_dashboard_screen.dart';
+import 'register_screen.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
 
   Future<void> _signIn() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng nhập đầy đủ thông tin')),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
-      await Supabase.instance.client.auth.signInWithPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+      final apiService = ref.read(apiServiceProvider);
+      await apiService.login(email, password);
+      
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const MainTabScreen()),
+        if (email == 'admin@foodapp.com') {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
+          );
+        } else {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const MainTabScreen()),
+          );
+        }
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString()), backgroundColor: Colors.red),
         );
       }
-    } on AuthException catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message), backgroundColor: Colors.red),
-      );
-    } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã có lỗi xảy ra'), backgroundColor: Colors.red),
-      );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _signUp() async {
-    setState(() => _isLoading = true);
-    try {
-      await Supabase.instance.client.auth.signUp(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng kiểm tra email để xác nhận!')),
-      );
-    } on AuthException catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message), backgroundColor: Colors.red),
-      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -114,8 +111,19 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Đăng nhập'),
             ),
+            const SizedBox(height: 16),
+            const Text(
+              'Gợi ý: test1@gmail.com / 123456',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+            const SizedBox(height: 8),
             TextButton(
-              onPressed: _isLoading ? null : _signUp,
+              onPressed: _isLoading ? null : () {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                );
+              },
               child: const Text('Chưa có tài khoản? Đăng ký ngay'),
             ),
           ],
@@ -124,3 +132,4 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+
