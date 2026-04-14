@@ -1,0 +1,58 @@
+<div class="max-w-4xl mx-auto px-4 py-12">
+  <div class="text-center mb-12">
+    <h2 class="text-3xl font-black text-gray-900 mb-2">Tìm kiếm bằng Camera <span class="text-orange-600">📸</span></h2>
+    <p class="text-gray-500">Chụp ảnh món ăn, AI sẽ cho bạn biết quán nào ngon nhất gần đây.</p>
+  </div>
+
+  <div class="bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-gray-100 max-w-xl mx-auto">
+    <div class="aspect-square bg-gray-50 flex items-center justify-center relative p-8">
+      <!-- Camera View Simulation -->
+      <div class="w-full h-full border-4 border-dashed border-gray-200 rounded-3xl flex items-center justify-center group overflow-hidden bg-white shadow-inner">
+        <div *ngIf="isAnalyzing" class="absolute inset-0 bg-white/80 backdrop-blur-sm z-20 flex flex-col items-center justify-center">
+            <div class="w-24 h-24 relative mb-6">
+                <div class="absolute inset-0 border-4 border-orange-100 rounded-full"></div>
+                <div class="absolute inset-0 border-4 border-orange-600 rounded-full border-t-transparent animate-spin"></div>
+            </div>
+            <p class="text-gray-800 font-bold animate-pulse">EfficientNetB4 đang quét...</p>
+        </div>
+        
+        <div *ngIf="recognizedFood" class="absolute inset-0 z-10 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-8 text-white animate-in fade-in zoom-in duration-500">
+            <span class="text-xs font-bold uppercase tracking-widest text-orange-400 mb-1">Thành công</span>
+            <h3 class="text-4xl font-black">{{ recognizedFood }}</h3>
+            <p class="text-green-400 font-bold flex items-center gap-1 mt-1">
+                <span>✓</span> Độ chính xác: {{ confidence | number:'1.1-1' }}%
+            </p>
+        </div>
+        
+        <span *ngIf="!isAnalyzing && !recognizedFood" class="text-8xl transition-transform group-hover:scale-110 duration-500">🍲</span>
+      </div>
+      
+      <!-- Scanning Animation -->
+      <div *ngIf="isAnalyzing" class="absolute left-8 right-8 h-1 bg-orange-600 shadow-[0_0_15px_rgba(234,88,12,0.8)] z-30 animate-bounce"></div>
+    </div>
+
+    <div class="p-8 bg-gray-50 border-t border-gray-100">
+      <div class="flex gap-4">
+        <button 
+          (click)="simulateRecognition()" 
+          [disabled]="isAnalyzing"
+          class="flex-grow bg-gray-900 hover:bg-black text-white font-bold py-4 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 shadow-xl shadow-gray-200">
+          <span *ngIf="!isAnalyzing">🖼️ Tải lên / Chụp ảnh</span>
+          <span *ngIf="isAnalyzing">Đang phân tích...</span>
+        </button>
+        
+        <button 
+          *ngIf="recognizedFood"
+          (click)="recognizedFood = ''"
+          class="bg-white hover:bg-gray-100 text-gray-800 p-4 rounded-2xl border border-gray-200 transition-all active:scale-95">
+          🔄
+        </button>
+      </div>
+      
+      <button *ngIf="recognizedFood && !isAnalyzing" 
+              class="w-full mt-4 bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 px-6 rounded-2xl animate-in slide-in-from-top-2 duration-300">
+        Tìm các quán bán món này
+      </button>
+    </div>
+  </div>
+</div>

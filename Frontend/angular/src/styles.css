@@ -1,1 +1,32 @@
-/* You can add global styles to this file, and also import other style files */
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+:root {
+  --primary-color: #f97316;
+  --secondary-color: #ea580c;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: #f9fafb;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.btn-primary {
+  @apply bg-orange-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-orange-700 transition-all duration-300 shadow-md hover:shadow-lg active:scale-95;
+}
+
+.nav-link {
+  @apply text-gray-300 hover:text-white transition-colors duration-200 font-medium;
+}
+
+.nav-link-active {
+  @apply text-orange-500 font-bold border-b-2 border-orange-500;
+}

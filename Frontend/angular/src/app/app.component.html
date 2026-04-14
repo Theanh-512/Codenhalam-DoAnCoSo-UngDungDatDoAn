@@ -1,1 +1,14 @@
-<router-outlet />
+<div class="min-h-screen bg-gray-50 flex flex-col">
+  <app-navbar></app-navbar>
+
+  <main class="container mx-auto px-4 py-8 flex-grow">
+    <router-outlet></router-outlet>
+  </main>
+
+  <footer class="bg-gray-900 text-gray-400 py-12 border-t border-gray-800">
+    <div class="container mx-auto px-4 text-center">
+      <p class="font-bold text-white mb-2">M-CARS Food AI Ecosystem</p>
+      <p class="text-sm">© 2026 Developing the next generation of food delivery systems.</p>
+    </div>
+  </footer>
+</div>
