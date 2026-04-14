@@ -74,4 +74,56 @@ class ApiService {
       throw 'Lỗi kết nối: $e';
     }
   }
+
+  Future<List<dynamic>> getRestaurantMenu(int restaurantId) async {
+    try {
+      final response = await http.get(Uri.parse('${ApiConstants.baseUrl}/restaurants/$restaurantId/menu'));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 404) {
+        return [];
+      } else {
+        throw Exception('Lỗi khi tải thực đơn');
+      }
+    } catch (e) {
+      throw 'Lỗi kết nối: $e';
+    }
+  }
+
+  Future<Map<String, dynamic>> placeOrder(int userId, double totalAmount, String address, List<dynamic> items) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConstants.baseUrl}/orders'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'userId': userId,
+          'totalAmount': totalAmount,
+          'deliveryAddress': address,
+          'items': items
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Đặt hàng thất bại');
+      }
+    } catch (e) {
+      throw 'Lỗi kết nối: $e';
+    }
+  }
+
+  Future<List<dynamic>> getUserOrders(int userId) async {
+    try {
+      final response = await http.get(Uri.parse('${ApiConstants.baseUrl}/orders/user/$userId'));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Lỗi khi tải lịch sử đơn hàng');
+      }
+    } catch (e) {
+      throw 'Lỗi kết nối: $e';
+    }
+  }
 }
+

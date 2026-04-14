@@ -3,6 +3,7 @@ import '../auth/login_screen.dart';
 import 'admin_restaurants_screen.dart';
 import 'admin_users_screen.dart';
 import 'admin_orders_screen.dart';
+import 'admin_route_optimization_screen.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -38,6 +39,7 @@ class AdminDashboardScreen extends StatelessWidget {
           _buildAdminCard(context, Icons.fastfood, 'Quản lý\nMón ăn', Colors.red, null),
           _buildAdminCard(context, Icons.people, 'Quản lý\nNgười dùng', Colors.blue, const AdminUsersScreen()),
           _buildAdminCard(context, Icons.receipt, 'Quản lý\nĐơn hàng', Colors.green, const AdminOrdersScreen()),
+          _buildAdminCard(context, Icons.route, 'Tối ưu\nLộ trình', Colors.purple, const AdminRouteScreen()),
           _buildAdminCard(context, Icons.analytics, 'Báo cáo\nThống kê', Colors.purple, null),
           _buildAdminCard(context, Icons.settings, 'Cài đặt\nHệ thống', Colors.grey, null),
         ],

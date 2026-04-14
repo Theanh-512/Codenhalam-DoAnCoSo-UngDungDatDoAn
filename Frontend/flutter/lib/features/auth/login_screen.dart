@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/restaurant_provider.dart';
+import '../../core/providers/auth_provider.dart';
 import '../main/main_tab_screen.dart';
 import '../admin/admin_dashboard_screen.dart';
 import 'register_screen.dart';
@@ -31,8 +32,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       final apiService = ref.read(apiServiceProvider);
-      await apiService.login(email, password);
+      final response = await apiService.login(email, password);
       
+      // Save user info
+      ref.read(authProvider.notifier).login(
+        response['id'] ?? 0, 
+        response['email'] ?? email, 
+        response['fullName'] ?? ''
+      );
+
       if (mounted) {
         if (email == 'admin@foodapp.com') {
           Navigator.of(context).pushReplacement(

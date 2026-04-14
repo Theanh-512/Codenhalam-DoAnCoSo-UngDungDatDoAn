@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/widgets/category_item.dart';
 import '../../shared/widgets/restaurant_card.dart';
 import '../../core/providers/restaurant_provider.dart';
+import 'restaurant_detail_screen.dart';
+import 'ai_recommendation_screen.dart';
+import 'food_recognition_screen.dart';
+import '../../core/providers/cart_provider.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -10,6 +14,7 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final restaurantsAsyncValue = ref.watch(restaurantsProvider);
+    final cartItems = ref.watch(cartProvider);
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -35,22 +40,29 @@ class HomeScreen extends ConsumerWidget {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.camera_alt, color: Colors.deepOrange),
+            onPressed: () {
+              Navigator.of(context).push(MaterialPageRoute(builder: (context) => const FoodRecognitionScreen()));
+            },
+          ),
           Stack(
             children: [
               IconButton(
                 icon: const Icon(Icons.shopping_cart_outlined),
                 onPressed: () {},
               ),
-              Positioned(
-                right: 8,
-                top: 8,
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                  constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
-                  child: const Text('2', style: TextStyle(color: Colors.white, fontSize: 8), textAlign: TextAlign.center),
-                ),
-              )
+              if (cartItems.isNotEmpty)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                    constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                    child: Text('${cartItems.length}', style: const TextStyle(color: Colors.white, fontSize: 8), textAlign: TextAlign.center),
+                  ),
+                )
             ],
           ),
         ],
@@ -111,12 +123,14 @@ class HomeScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Món ngon dành riêng cho bạn lúc 12:00 này!',
+                            'Dự đoán quán ngon theo lịch sử + Vị trí của bạn!',
                             style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13),
                           ),
                           const SizedBox(height: 12),
                           ElevatedButton(
-                            onPressed: () {},
+                            onPressed: () {
+                              Navigator.of(context).push(MaterialPageRoute(builder: (context) => const AIRecommendationScreen()));
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
                               foregroundColor: Colors.deepOrange,
@@ -124,7 +138,7 @@ class HomeScreen extends ConsumerWidget {
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                             ),
-                            child: const Text('Xem ngay', style: TextStyle(fontWeight: FontWeight.bold)),
+                            child: const Text('Xem mô hình', style: TextStyle(fontWeight: FontWeight.bold)),
                           ),
                         ],
                       ),
@@ -182,10 +196,19 @@ class HomeScreen extends ConsumerWidget {
                   itemCount: restaurants.length,
                   itemBuilder: (context, index) {
                     final restaurant = restaurants[index];
-                    return RestaurantCard(
-                      name: restaurant.name,
-                      info: restaurant.info,
-                      imageUrl: restaurant.imageUrl,
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => RestaurantDetailScreen(restaurant: restaurant),
+                          ),
+                        );
+                      },
+                      child: RestaurantCard(
+                        name: restaurant.name,
+                        info: restaurant.info,
+                        imageUrl: restaurant.imageUrl,
+                      ),
                     );
                   },
                 ),
