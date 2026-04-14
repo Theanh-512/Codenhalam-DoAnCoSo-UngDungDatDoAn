@@ -26,6 +26,43 @@ namespace API.Controllers
             return await _context.Restaurants.ToListAsync();
         }
 
+        // GET: api/Restaurants/{id}/menu
+        [HttpGet("{id}/menu")]
+        public async Task<ActionResult<IEnumerable<FoodItem>>> GetMenu(int id)
+        {
+            var menu = await _context.FoodItems
+                .Include(f => f.Category)
+                .Where(f => f.RestaurantId == id && f.IsAvailable)
+                .ToListAsync();
+
+            if (menu == null || !menu.Any())
+            {
+                return NotFound(new { message = "Không tìm thấy món ăn cho nhà hàng này." });
+            }
+
+            return menu;
+        }
+
+        // GET: api/Restaurants/recommend
+        [HttpGet("recommend")]
+        public async Task<ActionResult<IEnumerable<Restaurant>>> GetRecommendedRestaurants([FromQuery] int userId, [FromQuery] double lat, [FromQuery] double lng)
+        {
+            var aiEngine = new AICore.RecommendationEngine();
+            // Lấy danh sách ID từ SCR Python Model
+            var topIds = await aiEngine.PredictTopN(userId, lat, lng, 5);
+
+            if (topIds == null || topIds.Length == 0)
+            {
+                return await _context.Restaurants.Take(5).ToListAsync(); // Fallback
+            }
+
+            var recommendedRestaurants = await _context.Restaurants
+                .Where(r => topIds.Contains(r.Id))
+                .ToListAsync();
+
+            return recommendedRestaurants;
+        }
+
         // POST: api/Restaurants
         [HttpPost]
         public async Task<ActionResult<Restaurant>> PostRestaurant(Restaurant restaurant)
@@ -33,6 +70,40 @@ namespace API.Controllers
             _context.Restaurants.Add(restaurant);
             await _context.SaveChangesAsync();
             return CreatedAtAction(nameof(GetRestaurants), new { id = restaurant.Id }, restaurant);
+        }
+
+        // PUT: api/Restaurants/{id}
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutRestaurant(int id, Restaurant restaurant)
+        {
+            if (id != restaurant.Id) return BadRequest();
+
+            _context.Entry(restaurant).State = EntityState.Modified;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!await _context.Restaurants.AnyAsync(er => er.Id == id)) return NotFound();
+                else throw;
+            }
+
+            return NoContent();
+        }
+
+        // DELETE: api/Restaurants/{id}
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteRestaurant(int id)
+        {
+            var restaurant = await _context.Restaurants.FindAsync(id);
+            if (restaurant == null) return NotFound();
+
+            _context.Restaurants.Remove(restaurant);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
         }
 
         // POST: api/Restaurants/seed

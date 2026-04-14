@@ -71,6 +71,47 @@ namespace Infrastructure.Data
                 context.Restaurants.AddRange(restaurants);
                 await context.SaveChangesAsync();
             }
+
+            // Seed Categories if empty
+            if (!await context.Categories.AnyAsync())
+            {
+                var categories = new List<Category>
+                {
+                    new Category { Name = "Phở", Description = "Các loại phở truyền thống", CreatedDate = System.DateTime.UtcNow },
+                    new Category { Name = "Pizza & Đồ Âu", Description = "Pizza, mỳ Ý và đồ nướng", CreatedDate = System.DateTime.UtcNow },
+                    new Category { Name = "Bún & Phở", Description = "Bún, miến, phở các loại", CreatedDate = System.DateTime.UtcNow }
+                };
+                context.Categories.AddRange(categories);
+                await context.SaveChangesAsync();
+            }
+
+            // Seed FoodItems if empty
+            if (!await context.FoodItems.AnyAsync())
+            {
+                var phoStore = await context.Restaurants.FirstOrDefaultAsync(r => r.Name == "Phở Thìn Lò Đúc");
+                var pizzaStore = await context.Restaurants.FirstOrDefaultAsync(r => r.Name == "Pizza 4P's");
+                var bunChaStore = await context.Restaurants.FirstOrDefaultAsync(r => r.Name == "Bún Chả Hương Liên");
+                var catPho = await context.Categories.FirstOrDefaultAsync(c => c.Name == "Phở");
+                var catPizza = await context.Categories.FirstOrDefaultAsync(c => c.Name == "Pizza & Đồ Âu");
+                var catBun = await context.Categories.FirstOrDefaultAsync(c => c.Name == "Bún & Phở");
+
+                if (phoStore != null && pizzaStore != null && bunChaStore != null && catPho != null && catPizza != null && catBun != null)
+                {
+                    var foodItems = new List<FoodItem>
+                    {
+                        new FoodItem { Name = "Phở Bò Tái Lăn", Description = "Đặc sản Phở Thìn nhiều hành", Price = 70000, CategoryId = catPho.Id, RestaurantId = phoStore.Id, ImageUrl = "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=500", CreatedDate = System.DateTime.UtcNow },
+                        new FoodItem { Name = "Phở Bò Chín", Description = "Thơm ngon nước thanh", Price = 65000, CategoryId = catPho.Id, RestaurantId = phoStore.Id, ImageUrl = "https://images.unsplash.com/photo-1626804475297-41609ea8eb4b?w=500", CreatedDate = System.DateTime.UtcNow },
+                        
+                        new FoodItem { Name = "Pizza Half-Half", Description = "Phô mai Burrata & Thịt nguội", Price = 250000, CategoryId = catPizza.Id, RestaurantId = pizzaStore.Id, ImageUrl = "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500", CreatedDate = System.DateTime.UtcNow },
+                        new FoodItem { Name = "Mì Ý Cua", Description = "Mì Ý tôm cua sốt kem rong biển", Price = 180000, CategoryId = catPizza.Id, RestaurantId = pizzaStore.Id, ImageUrl = "https://images.unsplash.com/photo-1516100882582-96c3a05fe590?w=500", CreatedDate = System.DateTime.UtcNow },
+                        
+                        new FoodItem { Name = "Bún Chả Nem Cua Bể", Description = "Suất Obama đầy đủ", Price = 90000, CategoryId = catBun.Id, RestaurantId = bunChaStore.Id, ImageUrl = "https://images.unsplash.com/photo-1541529086526-db283c563270?w=500", CreatedDate = System.DateTime.UtcNow },
+                        new FoodItem { Name = "Bún Chả Thường", Description = "Chả băm và chả miếng", Price = 50000, CategoryId = catBun.Id, RestaurantId = bunChaStore.Id, ImageUrl = "https://images.unsplash.com/photo-1596704177526-66380c2f30b9?w=500", CreatedDate = System.DateTime.UtcNow }
+                    };
+                    context.FoodItems.AddRange(foodItems);
+                    await context.SaveChangesAsync();
+                }
+            }
         }
     }
 }
