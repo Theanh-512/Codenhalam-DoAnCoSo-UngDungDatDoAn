@@ -19,6 +19,13 @@ namespace API.Controllers
             _context = context;
         }
 
+        // GET: api/Orders
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<Order>>> GetOrders()
+        {
+            return await _context.Orders.ToListAsync();
+        }
+
         // POST: api/Orders
         [HttpPost]
         public async Task<ActionResult<Order>> CreateOrder([FromBody] CreateOrderRequest request)

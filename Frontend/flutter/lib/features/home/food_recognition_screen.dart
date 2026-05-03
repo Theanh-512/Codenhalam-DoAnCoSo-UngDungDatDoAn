@@ -22,7 +22,22 @@ class _FoodRecognitionScreenState extends State<FoodRecognitionScreen> {
     });
 
     try {
-      // Vì không cài camera thật trên app demo, ta sẽ mock luồng chụp và gửi file lên AI Service
+      // THEO BÁO CÁO TUẦN 8: XỬ LÝ ẢNH QUÁ LỚN TỪ THIẾT BỊ DI ĐỘNG
+      // 1. Chụp ảnh / Chọn ảnh từ thư viện
+      // final ImagePicker picker = ImagePicker();
+      // final XFile? image = await picker.pickImage(source: ImageSource.camera);
+      // if (image == null) return;
+      
+      // 2. Nén và Resize ảnh ngay tại Client để tối ưu băng thông trước khi gửi lên API Computer Vision
+      // final compressedFile = await FlutterImageCompress.compressAndGetFile(
+      //   image.path, 
+      //   outPath,
+      //   minWidth: 800,
+      //   minHeight: 800,
+      //   quality: 85, // Giảm chất lượng xuống 85% để nhẹ nhưng vẫn đủ để AI nhận diện
+      // );
+
+      // 3. Gửi lên Server
       await Future.delayed(const Duration(seconds: 2)); // Giả lập độ trễ Camera & Upload (Transfer Learning xử lý)
       
       // Gọi Python Backend POST /api/ai/recognize-food

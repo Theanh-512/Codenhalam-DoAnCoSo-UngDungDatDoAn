@@ -2,11 +2,12 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RestaurantService, Restaurant } from '../../../core/services/restaurant.service';
+import { ButtonComponent } from '../../../shared/components/ui/button/button.component';
 
 @Component({
   selector: 'app-restaurant-management',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ButtonComponent],
   templateUrl: './restaurant-management.component.html',
   styleUrls: ['./restaurant-management.component.css']
 })

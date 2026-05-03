@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Infrastructure.Data;
 using Domain.Entities;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System;
+using System.Linq;
 
 namespace API.Controllers
 {
@@ -12,10 +15,12 @@ namespace API.Controllers
     public class RestaurantsController : ControllerBase
     {
         private readonly FoodAppDbContext _context;
+        private readonly IMemoryCache _cache;
 
-        public RestaurantsController(FoodAppDbContext context)
+        public RestaurantsController(FoodAppDbContext context, IMemoryCache cache)
         {
             _context = context;
+            _cache = cache;
         }
 
         // GET: api/Restaurants
@@ -47,20 +52,77 @@ namespace API.Controllers
         [HttpGet("recommend")]
         public async Task<ActionResult<IEnumerable<Restaurant>>> GetRecommendedRestaurants([FromQuery] int userId, [FromQuery] double lat, [FromQuery] double lng)
         {
+            // THEO BÁO CÁO: Tối ưu hóa cơ chế Caching cho dữ liệu Long-term
+            var cacheKey = $"User_{userId}_Lat_{lat}_Lng_{lng}_Recs";
+            if (_cache.TryGetValue(cacheKey, out List<Restaurant> cachedRestaurants))
+            {
+                return cachedRestaurants;
+            }
+
+            // THEO BÁO CÁO: Giới hạn bán kính không gian (Spatial filtering 5km-10km)
+            var allRestaurants = await _context.Restaurants.ToListAsync();
+            var nearbyRestaurants = allRestaurants
+                .Where(r => CalculateDistance(lat, lng, r.Latitude, r.Longitude) <= 10.0)
+                .ToList();
+
+            if (!nearbyRestaurants.Any())
+            {
+                return NotFound(new { message = "Không tìm thấy nhà hàng nào trong bán kính 10km." });
+            }
+
             var aiEngine = new AICore.RecommendationEngine();
-            // Lấy danh sách ID từ SCR Python Model
+            // Gọi AI Service (Sẽ gọi gRPC trong thực tế) để lấy Top-N
             var topIds = await aiEngine.PredictTopN(userId, lat, lng, 5);
+
+            List<Restaurant> recommendedRestaurants;
 
             if (topIds == null || topIds.Length == 0)
             {
-                return await _context.Restaurants.Take(5).ToListAsync(); // Fallback
+                // THEO BÁO CÁO: Vấn đề Cold Start -> Cơ chế Fallback sử dụng KNN (khoảng cách thuần túy)
+                recommendedRestaurants = nearbyRestaurants
+                    .OrderBy(r => CalculateDistance(lat, lng, r.Latitude, r.Longitude))
+                    .Take(5)
+                    .ToList();
+            }
+            else
+            {
+                recommendedRestaurants = nearbyRestaurants
+                    .Where(r => topIds.Contains(r.Id))
+                    .ToList();
+
+                if (!recommendedRestaurants.Any()) 
+                {
+                    recommendedRestaurants = nearbyRestaurants
+                        .OrderBy(r => CalculateDistance(lat, lng, r.Latitude, r.Longitude))
+                        .Take(5)
+                        .ToList();
+                }
             }
 
-            var recommendedRestaurants = await _context.Restaurants
-                .Where(r => topIds.Contains(r.Id))
-                .ToListAsync();
+            // Lưu vào Memory Cache với TTL 30 phút (Giảm tải truy vấn SQL)
+            var cacheEntryOptions = new MemoryCacheEntryOptions()
+                .SetAbsoluteExpiration(TimeSpan.FromMinutes(30));
+            _cache.Set(cacheKey, recommendedRestaurants, cacheEntryOptions);
 
             return recommendedRestaurants;
+        }
+
+        private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
+        {
+            var R = 6371; // Bán kính trái đất (km)
+            var dLat = Deg2Rad(lat2 - lat1);
+            var dLon = Deg2Rad(lon2 - lon1);
+            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                    Math.Cos(Deg2Rad(lat1)) * Math.Cos(Deg2Rad(lat2)) *
+                    Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+            var d = R * c; 
+            return d;
+        }
+
+        private double Deg2Rad(double deg)
+        {
+            return deg * (Math.PI / 180);
         }
 
         // POST: api/Restaurants

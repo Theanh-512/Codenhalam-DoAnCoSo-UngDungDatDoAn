@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/models/restaurant.dart';
 import '../../core/providers/restaurant_provider.dart';
 import '../../core/providers/cart_provider.dart';
+import '../../core/theme.dart';
 
 class RestaurantDetailScreen extends ConsumerStatefulWidget {
   final Restaurant restaurant;
@@ -14,132 +15,218 @@ class RestaurantDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen> {
-  List<dynamic> _menu = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadMenu();
-  }
-
-  Future<void> _loadMenu() async {
-    try {
-      final apiService = ref.read(apiServiceProvider);
-      final menu = await apiService.getRestaurantMenu(widget.restaurant.id);
-      if (mounted) {
-        setState(() {
-          _menu = menu;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-      }
-    }
-  }
+  int quantity = 1;
+  String selectedSize = 'Medium';
+  String selectedSugar = '70%';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 250,
-            pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              title: Text(widget.restaurant.name),
-              background: Image.network(
-                widget.restaurant.imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (c, e, s) => const Icon(Icons.restaurant, size: 50),
-              ),
+      backgroundColor: AppTheme.bgColor,
+      body: Stack(
+        children: [
+          // Content
+          SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top Image with rounded bottom header effect
+                Container(
+                  height: MediaQuery.of(context).size.height * 0.45,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(40)),
+                    image: DecorationImage(
+                      image: NetworkImage(widget.restaurant.imageUrl),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                
+                Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              widget.restaurant.name,
+                              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.black, color: AppTheme.darkGreen),
+                            ),
+                          ),
+                          const Text('\$25', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(widget.restaurant.description, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+                      
+                      const SizedBox(height: 32),
+                      
+                      // Size Selection
+                      const Text('Size', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: ['Small', 'Medium', 'Large'].map((size) {
+                          bool isSelected = selectedSize == size;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 12),
+                            child: ActionChip(
+                              label: Text(size),
+                              onPressed: () => setState(() => selectedSize = size),
+                              backgroundColor: isSelected ? AppTheme.secondaryGreen : Colors.white,
+                              labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black, fontWeight: FontWeight.bold),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Toppings (Mocked as icons like in image)
+                      const Text('Topping', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 12),
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _ToppingIcon(icon: Icons.brightness_3, label: 'Pear', price: '\$5'),
+                          _ToppingIcon(icon: Icons.Eco, label: 'Lemongrass', price: '\$2'),
+                          _ToppingIcon(icon: Icons.grass, label: 'Cinnamon', price: '\$1'),
+                        ],
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Sugar Level
+                      const Text('Sugar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: ['Ice', '100%', '70%', '50%'].map((sugar) {
+                          bool isSelected = selectedSugar == sugar;
+                          return Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              child: ActionChip(
+                                label: Text(sugar),
+                                onPressed: () => setState(() => selectedSugar = sugar),
+                                backgroundColor: isSelected ? AppTheme.secondaryGreen : Colors.white,
+                                labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black, fontSize: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      
+                      const SizedBox(height: 120), // Spacing for footer
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+
+          // Header Buttons
+          Positioned(
+            top: 50, left: 16, right: 16,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _CircleBtn(icon: Icons.arrow_back_ios_new, onTap: () => Navigator.pop(context)),
+                _CircleBtn(icon: Icons.shopping_bag_outlined, onTap: () {}),
+              ],
+            ),
+          ),
+
+          // Bottom Bar
+          Positioned(
+            bottom: 0, left: 0, right: 0,
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+              ),
+              child: Row(
                 children: [
-                  const Text('Thông tin nhà hàng', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Text('Địa chỉ: ${widget.restaurant.address}'),
-                  Text('Giờ mở cửa: ${widget.restaurant.openingHours}'),
-                  const SizedBox(height: 16),
-                  const Divider(),
-                  const Text('Thực đơn', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  // Quantity
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(16)),
+                    child: Row(
+                      children: [
+                        IconButton(onPressed: () => setState(() => quantity > 1 ? quantity-- : null), icon: const Icon(Icons.remove, size: 16)),
+                        Text('$quantity', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        IconButton(onPressed: () => setState(() => quantity++), icon: const Icon(Icons.add, size: 16)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        ref.read(cartProvider.notifier).addItem(
+                          widget.restaurant.id,
+                          widget.restaurant.name,
+                          25.0, // Mock price
+                          widget.restaurant.imageUrl,
+                        );
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+                      child: const Text('Add to order'),
+                    ),
+                  ),
                 ],
               ),
             ),
           ),
-          if (_isLoading)
-            const SliverFillRemaining(child: Center(child: CircularProgressIndicator()))
-          else if (_menu.isEmpty)
-            const SliverFillRemaining(child: Center(child: Text('Chưa có món ăn nào.')))
-          else
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final item = _menu[index];
-                  return ListTile(
-                    leading: Container(
-                      width: 60, height: 60,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        image: DecorationImage(
-                          image: NetworkImage(item['imageUrl'] ?? ''),
-                          fit: BoxFit.cover,
-                          onError: (_, __) => const Icon(Icons.fastfood),
-                        ),
-                      ),
-                    ),
-                    title: Text(item['name'] ?? ''),
-                    subtitle: Text('${item['price']} đ'),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.add_circle, color: Colors.deepOrange),
-                      onPressed: () {
-                        ref.read(cartProvider.notifier).addItem(
-                          item['id'],
-                          item['name'],
-                          (item['price'] as num).toDouble(),
-                          item['imageUrl'] ?? '',
-                        );
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Đã thêm ${item['name']} vào giỏ hàng'), duration: const Duration(seconds: 1)),
-                        );
-                      },
-                    ),
-                  );
-                },
-                childCount: _menu.length,
-              ),
-            ),
         ],
       ),
-      bottomNavigationBar: Consumer(
-        builder: (context, ref, child) {
-          final cart = ref.watch(cartProvider);
-          if (cart.isEmpty) return const SizedBox.shrink();
-          
-          final totalPrice = ref.read(cartProvider.notifier).totalPrice;
-          return Container(
-            padding: const EdgeInsets.all(16),
-            color: Colors.white,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.deepOrange, padding: const EdgeInsets.symmetric(vertical: 16)),
-              onPressed: () {
-                Navigator.of(context).pop(); // Go back to Home, customer can navigate to Cart tab natively
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Vào Giỏ hàng để thanh toán nhé!')),
-                );
-              },
-              child: Text('Giỏ hàng (${cart.length} món) - $totalPrice đ', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-            ),
-          );
-        },
+    );
+  }
+}
+
+class _CircleBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _CircleBtn({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)]),
+        child: Icon(icon, size: 18, color: AppTheme.darkGreen),
+      ),
+    );
+  }
+}
+
+class _ToppingIcon extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String price;
+  const _ToppingIcon({required this.icon, required this.label, required this.price});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 90, height: 100,
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.grey[100]!)),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: AppTheme.primaryColor),
+          const SizedBox(height: 4),
+          Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+          Text(price, style: const TextStyle(fontSize: 10, color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
+        ],
       ),
     );
   }

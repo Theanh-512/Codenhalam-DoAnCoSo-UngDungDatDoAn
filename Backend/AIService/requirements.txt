@@ -2,6 +2,8 @@ fastapi==0.104.1
 uvicorn==0.24.0
 pydantic==2.5.2
 python-multipart==0.0.6
+grpcio==1.60.0
+grpcio-tools==1.60.0
 # Mở chú thích các thư viện dưới đây khi tiến hành train Model ở Giai đoạn 2
 # torch==2.1.1
 # tensorflow==2.15.0

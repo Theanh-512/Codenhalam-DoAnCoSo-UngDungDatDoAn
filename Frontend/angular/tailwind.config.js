@@ -12,11 +12,16 @@ module.exports = {
           200: '#fed7aa',
           300: '#fdba74',
           400: '#fb923c',
-          500: '#f97316',
-          600: '#ea580c',
-          700: '#c2410c',
-          800: '#9a3412',
-          900: '#7c2d12',
+          500: '#E67E22', // Main Orange
+          600: '#d97706',
+          700: '#b45309',
+          800: '#92400e',
+          900: '#78350f',
+        },
+        accent: {
+          light: '#F1F8E9', // Light Green Background
+          medium: '#81C784', // Green Accent
+          dark: '#2E7D32',   // Dark Green
         }
       }
     },

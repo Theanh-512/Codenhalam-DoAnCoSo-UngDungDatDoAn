@@ -3,229 +3,214 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/widgets/category_item.dart';
 import '../../shared/widgets/restaurant_card.dart';
 import '../../core/providers/restaurant_provider.dart';
+import '../../core/theme.dart';
 import 'restaurant_detail_screen.dart';
 import 'ai_recommendation_screen.dart';
 import 'food_recognition_screen.dart';
 import '../../core/providers/cart_provider.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  int selectedCategoryIndex = 0;
+  final categories = ['Tất cả', 'Trà sữa', 'Cà phê', 'Bánh ngọt', 'Ăn vặt'];
+
+  @override
+  Widget build(BuildContext context) {
     final restaurantsAsyncValue = ref.watch(restaurantsProvider);
     final cartItems = ref.watch(cartProvider);
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Giao đến',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500),
-            ),
-            Row(
-              children: [
-                const Icon(Icons.location_on, size: 16, color: Colors.deepOrange),
-                const SizedBox(width: 4),
-                Text(
-                  'Đại học Bách Khoa...',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey[900]),
-                ),
-                const Icon(Icons.keyboard_arrow_down, size: 16, color: Colors.deepOrange),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.camera_alt, color: Colors.deepOrange),
-            onPressed: () {
-              Navigator.of(context).push(MaterialPageRoute(builder: (context) => const FoodRecognitionScreen()));
-            },
-          ),
-          Stack(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.shopping_cart_outlined),
-                onPressed: () {},
-              ),
-              if (cartItems.isNotEmpty)
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                    constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
-                    child: Text('${cartItems.length}', style: const TextStyle(color: Colors.white, fontSize: 8), textAlign: TextAlign.center),
-                  ),
-                )
-            ],
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () => ref.refresh(restaurantsProvider.future),
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Search Bar
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5)),
-                    ],
-                  ),
-                  child: const TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Tìm kiếm món ngon...',
-                      border: InputBorder.none,
-                      icon: Icon(Icons.search, color: Colors.grey),
-                    ),
-                  ),
-                ),
-              ),
-
-              // AI Recommendation Banner
-              Container(
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Colors.orange[700]!, Colors.deepOrange[800]!],
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(color: Colors.deepOrange.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
+      backgroundColor: AppTheme.bgColor,
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () => ref.refresh(restaurantsProvider.future),
+          child: CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              // Header
+              SliverPadding(
+                padding: const EdgeInsets.all(16.0),
+                sliver: SliverToBoxAdapter(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Gợi ý từ AI 🧠',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Dự đoán quán ngon theo lịch sử + Vị trí của bạn!',
-                            style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13),
-                          ),
-                          const SizedBox(height: 12),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.of(context).push(MaterialPageRoute(builder: (context) => const AIRecommendationScreen()));
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: Colors.deepOrange,
-                              elevation: 0,
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                            ),
-                            child: const Text('Xem mô hình', style: TextStyle(fontWeight: FontWeight.bold)),
-                          ),
+                          Text('Chào buổi sáng 🍵', style: TextStyle(fontSize: 14, color: Colors.grey)),
+                          Text('Thưởng thức trà thôi!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                         ],
                       ),
-                    ),
-                    const Icon(Icons.auto_awesome, color: Colors.white, size: 60),
-                  ],
-                ),
-              ),
-              
-              const Padding(
-                padding: EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: Text(
-                  'Danh mục',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ),
-              
-              SizedBox(
-                height: 110,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  children: const [
-                    CategoryItem(name: 'Cơm', icon: Icons.rice_bowl),
-                    CategoryItem(name: 'Bún/Phở', icon: Icons.soup_kitchen),
-                    CategoryItem(name: 'Pizza', icon: Icons.local_pizza),
-                    CategoryItem(name: 'Trà sữa', icon: Icons.local_drink),
-                    CategoryItem(name: 'Ăn vặt', icon: Icons.fastfood),
-                  ],
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            const Icon(Icons.shopping_basket_outlined, color: AppTheme.darkGreen),
+                            if (cartItems.isNotEmpty)
+                              Positioned(
+                                right: -5,
+                                top: -5,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(color: AppTheme.primaryColor, shape: BoxShape.circle),
+                                  child: Text('${cartItems.length}', style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                                ),
+                              )
+                          ],
+                        ),
+                      )
+                    ],
+                  ),
                 ),
               ),
 
-              const Padding(
-                padding: EdgeInsets.fromLTRB(16, 24, 16, 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Quán ngon gần bạn',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      'Xem tất cả',
-                      style: TextStyle(fontSize: 14, color: Colors.deepOrange, fontWeight: FontWeight.w600),
-                    ),
-                  ],
+              // AI Banner (Sour candy theme)
+              SliverToBoxAdapter(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  height: 160,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFA5D6A7),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        right: 10, bottom: 10, top: 10,
+                        child: Image.network('https://images.unsplash.com/photo-1550617931-e17a7b70dce2?w=300', fit: BoxFit.contain),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Gợi ý từ AI 🧠', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 8),
+                            const Text('Predict your vibe,\nenjoy the taste!', style: TextStyle(color: Colors.white, fontSize: 14)),
+                            const Spacer(),
+                            ElevatedButton(
+                              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const AIRecommendationScreen())),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: AppTheme.darkGreen,
+                                minimumSize: const Size(100, 36),
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                              ),
+                              child: const Text('Thử ngay', style: TextStyle(fontSize: 12)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
-              // Restaurant List from Backend
+              // Categories
+              SliverToBoxAdapter(
+                child: Container(
+                  height: 45,
+                  margin: const EdgeInsets.symmetric(vertical: 24),
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: categories.length,
+                    itemBuilder: (context, index) {
+                      return GestureDetector(
+                        onTap: () => setState(() => selectedCategoryIndex = index),
+                        child: CategoryItem(
+                          name: categories[index],
+                          isSelected: selectedCategoryIndex == index,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+
+              // Top Favorite Section
+              const SliverPadding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                sliver: SliverToBoxAdapter(
+                  child: Text('Đang thịnh hành 🔥', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ),
+              ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
               restaurantsAsyncValue.when(
-                data: (restaurants) => ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: restaurants.length,
-                  itemBuilder: (context, index) {
-                    final restaurant = restaurants[index];
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => RestaurantDetailScreen(restaurant: restaurant),
+                data: (restaurants) => SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  sliver: SliverGrid(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 16,
+                      crossAxisSpacing: 16,
+                      childAspectRatio: 0.8,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final restaurant = restaurants[index];
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => RestaurantDetailScreen(restaurant: restaurant),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: ClipRRect(
+                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                                    child: Image.network(restaurant.imageUrl, fit: BoxFit.cover, width: double.infinity),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.all(12.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(restaurant.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), maxLines: 1),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          const Text('🔥 Hot', style: TextStyle(color: AppTheme.primaryColor, fontSize: 10, fontWeight: FontWeight.bold)),
+                                          Text('\$${15 + index}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                        ],
+                                      )
+                                    ],
+                                  ),
+                                )
+                              ],
+                            ),
                           ),
                         );
                       },
-                      child: RestaurantCard(
-                        name: restaurant.name,
-                        info: restaurant.info,
-                        imageUrl: restaurant.imageUrl,
-                      ),
-                    );
-                  },
-                ),
-                loading: () => const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(20.0),
-                    child: CircularProgressIndicator(),
+                      childCount: restaurants.length,
+                    ),
                   ),
                 ),
-                error: (err, stack) => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Text('Lỗi: $err', style: const TextStyle(color: Colors.red)),
-                  ),
-                ),
+                loading: () => const SliverFillRemaining(child: Center(child: CircularProgressIndicator())),
+                error: (err, s) => SliverFillRemaining(child: Center(child: Text('Lỗi: $err'))),
               ),
-              const SizedBox(height: 24),
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
         ),
@@ -233,4 +218,3 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 }
-

@@ -6,23 +6,49 @@
     </div>
     <div class="flex gap-4">
         <button routerLink="/admin/restaurants" class="bg-gray-900 text-white px-6 py-3 rounded-2xl font-bold hover:bg-black transition-all shadow-xl shadow-gray-200">
-            Quản lý Nhà hàng
+            + Thêm Nhà hàng
         </button>
     </div>
   </header>
 
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="flex items-center justify-center py-12">
+    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+  </div>
+
   <!-- Stats Grid -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-    <div *ngFor="let stat of stats" class="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300">
-      <div class="flex items-center justify-between mb-4">
-        <span [class]="stat.color + ' w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-inner'">
-          {{ stat.icon }}
-        </span>
-        <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Live Updates</span>
-      </div>
-      <p class="text-gray-500 text-sm font-semibold mb-1">{{ stat.label }}</p>
-      <h3 class="text-3xl font-black text-gray-900 tracking-tight">{{ stat.value }}</h3>
-    </div>
+  <div *ngIf="!isLoading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+    <app-stat-card 
+      label="Tổng Nhà hàng" 
+      [value]="restaurantCount" 
+      icon="🏪" 
+      color="bg-blue-100 text-blue-600" 
+      link="/admin/restaurants">
+    </app-stat-card>
+    
+    <app-stat-card 
+      label="Người dùng" 
+      [value]="userCount" 
+      icon="👥" 
+      color="bg-purple-100 text-purple-600" 
+      link="/admin/users">
+    </app-stat-card>
+
+    <app-stat-card 
+      label="Đơn hàng" 
+      [value]="orderCount" 
+      icon="📝" 
+      color="bg-green-100 text-green-600" 
+      link="/admin/orders">
+    </app-stat-card>
+
+    <app-stat-card 
+      label="Doanh thu" 
+      value="54.2M" 
+      icon="💰" 
+      color="bg-orange-100 text-orange-600" 
+      link="/admin/dashboard">
+    </app-stat-card>
   </div>
 
   <!-- Main Management Area -->

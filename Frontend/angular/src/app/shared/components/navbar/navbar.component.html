@@ -1,1 +1,43 @@
-<p>navbar works!</p>
+<nav class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+    <!-- Logo -->
+    <div class="flex items-center gap-2 cursor-pointer" routerLink="/">
+      <div class="w-10 h-10 bg-accent-medium rounded-xl flex items-center justify-center text-white text-xl font-black shadow-lg shadow-accent-medium/30">
+        M
+      </div>
+      <span class="text-xl font-black text-accent-dark tracking-tighter uppercase">CARS<span class="text-primary-500">.Food</span></span>
+    </div>
+
+    <!-- Navigation Links -->
+    <div class="hidden md:flex items-center gap-8">
+      <a routerLink="/" routerLinkActive="text-accent-dark font-bold underline" [routerLinkActiveOptions]="{exact: true}" 
+         class="text-gray-500 hover:text-accent-dark font-medium transition-all text-xs uppercase tracking-widest">Trang chủ</a>
+      
+      <ng-container *ngIf="currentUser">
+        <a *ngIf="currentUser.role === 'admin'" routerLink="/admin/dashboard" routerLinkActive="text-accent-dark font-bold underline"
+           class="text-gray-500 hover:text-accent-dark font-medium transition-all text-xs uppercase tracking-widest border-l pl-8 border-gray-200">Admin Panel</a>
+        
+        <a *ngIf="currentUser.role === 'user'" routerLink="/ai-recommendation" routerLinkActive="text-accent-dark font-bold underline"
+           class="text-gray-500 hover:text-accent-dark font-medium transition-all text-xs uppercase tracking-widest">Gợi ý AI</a>
+      </ng-container>
+    </div>
+
+    <!-- Auth Buttons -->
+    <div class="flex items-center gap-4">
+      <ng-container *ngIf="!currentUser">
+        <button routerLink="/login" class="text-gray-600 font-bold px-6 py-2 hover:bg-gray-100 rounded-xl transition-all">Đăng nhập</button>
+        <button class="bg-primary-500 text-white px-6 py-3 rounded-xl font-bold hover:bg-primary-600 transition-all shadow-xl shadow-primary-500/20">Bắt đầu ngay</button>
+      </ng-container>
+
+      <div *ngIf="currentUser" class="flex items-center gap-4 bg-white px-4 py-2 rounded-2xl border border-gray-100 shadow-sm">
+        <div class="text-right">
+          <p class="text-xs font-black text-accent-dark leading-none">{{ currentUser.email.split('@')[0] }}</p>
+          <span class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{{ currentUser.role }}</span>
+        </div>
+        <button (click)="logout()" class="w-8 h-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+        </button>
+      </div>
+    </div>
+</nav>

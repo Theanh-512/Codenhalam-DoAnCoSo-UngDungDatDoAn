@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+option csharp_namespace = "AICore.Grpc";
+
+package recommendation;
+
+// THEO BÁO CÁO TUẦN 8: Xung đột Data Type giữa Python và .NET (float64 vs float32)
+// Chuẩn hóa kiểu dữ liệu float trong tệp .proto để đồng nhất vector embedding
+message VectorContextRequest {
+  int32 user_id = 1;
+  float lat = 2; // Sử dụng float chuẩn để đồng bộ giữa C# và Python
+  float lng = 3; // Sử dụng float chuẩn để đồng bộ giữa C# và Python
+  string time = 4;
+  int32 day_of_week = 5;
+  repeated float short_term_history = 6; // Các vector sở thích ngắn hạn
+}
+
+message RecommendationResponse {
+  repeated int32 restaurant_ids = 1;
+  string reason = 2;
+  float confidence_score = 3;
+}
+
+service RecommendationService {
+  rpc GetRecommendations (VectorContextRequest) returns (RecommendationResponse);
+}

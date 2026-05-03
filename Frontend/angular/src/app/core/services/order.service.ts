@@ -10,6 +10,11 @@ export class OrderService {
 
   constructor(private http: HttpClient) {}
 
+  // Lấy toàn bộ đơn hàng (Admin)
+  getAll(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/Orders`);
+  }
+
   // Lấy lộ trình giao hàng tối ưu (Greedy Algorithm)
   getOptimizedRoute(): Observable<any> {
     return this.http.get(`${this.apiUrl}/Orders/optimize-route`);

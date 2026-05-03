@@ -19,6 +19,25 @@ class ApiService {
     }
   }
 
+  Future<List<Restaurant>> getRecommendedRestaurants(int userId, double lat, double lng) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConstants.baseUrl}/Restaurants/recommend?userId=$userId&lat=$lat&lng=$lng'),
+      );
+      
+      if (response.statusCode == 200) {
+        List<dynamic> body = jsonDecode(response.body);
+        return body.map((dynamic item) => Restaurant.fromJson(item)).toList();
+      } else if (response.statusCode == 404) {
+        return []; // Không có trong bán kính
+      } else {
+        throw Exception('Failed to load recommended restaurants');
+      }
+    } catch (e) {
+      throw Exception('Error connecting to backend for recommendations: $e');
+    }
+  }
+
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       final response = await http.post(

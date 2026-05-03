@@ -1,59 +1,52 @@
 using System;
-using System.Net.Http;
-using System.Text.Json;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using Grpc.Net.Client;
+using AICore.Grpc; // Namespace sinh ra từ file .proto
 
 namespace AICore
 {
     public class RecommendationEngine
     {
-        private readonly HttpClient _httpClient;
-        private readonly string _pythonServiceUrl = "http://localhost:8000"; // Địa chỉ mặc định của bản giả lập FastAPI 
+        private readonly string _grpcPythonServiceUrl = "http://localhost:50051"; // Cổng mặc định của gRPC Server Python
 
         public RecommendationEngine()
         {
-            _httpClient = new HttpClient();
         }
 
-        // Tích hợp Model SCR (Deep Sequential Model)
+        // Tích hợp Model SCR (Deep Sequential Model) sử dụng gRPC
         public async Task<int[]> PredictTopN(int userId, double lat, double lng, int n)
         {
             try
             {
                 var currentTime = DateTime.Now;
-                var requestBody = new
+                
+                // Mở kênh kết nối gRPC
+                using var channel = GrpcChannel.ForAddress(_grpcPythonServiceUrl);
+                var client = new RecommendationService.RecommendationServiceClient(channel);
+
+                // Chuẩn bị Request chuẩn hóa float (theo Báo cáo tuần 8)
+                var request = new VectorContextRequest
                 {
-                    user_id = userId,
-                    lat = lat,
-                    lng = lng,
-                    time = currentTime.ToString("HH:mm"),
-                    day_of_week = (int)currentTime.DayOfWeek
+                    UserId = userId,
+                    Lat = (float)lat, // Ép kiểu về float32 để đồng nhất với Python (float64)
+                    Lng = (float)lng, // Ép kiểu về float32
+                    Time = currentTime.ToString("HH:mm"),
+                    DayOfWeek = (int)currentTime.DayOfWeek
                 };
 
-                var content = new StringContent(JsonSerializer.Serialize(requestBody), System.Text.Encoding.UTF8, "application/json");
-                var response = await _httpClient.PostAsync($"{_pythonServiceUrl}/api/ai/recommend-poi", content);
+                // Gọi gRPC
+                var response = await client.GetRecommendationsAsync(request);
 
-                if (response.IsSuccessStatusCode)
-                {
-                    var responseStr = await response.Content.ReadAsStringAsync();
-                    var result = JsonSerializer.Deserialize<RecommendationResponse>(responseStr, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                    return result?.Restaurant_ids?.ToArray() ?? new int[0];
-                }
+                return response.RestaurantIds.ToArray();
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Lỗi gọi AI Service: {ex.Message}");
+                Console.WriteLine($"Lỗi gọi AI Service qua gRPC: {ex.Message}");
             }
             
-            // Trả về Dummy data nếu Microservice Python chưa chạy (để tránh lỗi Crash)
-            return new int[] { 1, 2, 3 };
+            // Fallback trả về Empty Array để API Controller xử lý bằng KNN (theo Báo cáo tuần 8)
+            return new int[0];
         }
-    }
-
-    public class RecommendationResponse
-    {
-        public List<int>? Restaurant_ids { get; set; }
-        public string? Reason { get; set; }
     }
 }

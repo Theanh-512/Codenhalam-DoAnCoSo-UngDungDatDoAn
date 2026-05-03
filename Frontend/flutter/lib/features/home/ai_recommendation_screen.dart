@@ -34,18 +34,15 @@ class _AIRecommendationScreenState extends ConsumerState<AIRecommendationScreen>
       final dummyLat = 21.0285;
       final dummyLng = 105.8542;
 
-      final response = await http.get(Uri.parse('${ApiConstants.baseUrl}/restaurants/recommend?userId=$userId&lat=$dummyLat&lng=$dummyLng'));
+      // Sử dụng ApiService thay vì gọi HTTP trực tiếp
+      final apiService = ApiService();
+      final data = await apiService.getRecommendedRestaurants(userId, dummyLat, dummyLng);
       
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        if (mounted) {
-          setState(() {
-            _recommended = data.map((json) => Restaurant.fromJson(json)).toList();
-            _isLoading = false;
-          });
-        }
-      } else {
-        throw Exception("Lỗi lấy dữ liệu AI");
+      if (mounted) {
+        setState(() {
+          _recommended = data;
+          _isLoading = false;
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -64,7 +61,20 @@ class _AIRecommendationScreenState extends ConsumerState<AIRecommendationScreen>
         foregroundColor: Colors.white,
       ),
       body: _isLoading 
-        ? const Center(child: CircularProgressIndicator())
+        ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const CircularProgressIndicator(color: Colors.deepOrange),
+                const SizedBox(height: 20),
+                Text(
+                  'Hệ thống AI đang phân tích dữ liệu\nkhông gian và lịch sử của bạn...',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey[600], fontStyle: FontStyle.italic),
+                ),
+              ],
+            ),
+          )
         : _recommended.isEmpty
           ? const Center(child: Text('Không có gợi ý nào tại thời điểm và vị trí này.'))
           : ListView.builder(
