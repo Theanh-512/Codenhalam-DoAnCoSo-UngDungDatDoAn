@@ -1,14 +1,38 @@
-<div class="min-h-screen bg-gray-50 flex flex-col">
+<div class="min-h-screen bg-background-light flex flex-col font-sans">
   <app-navbar></app-navbar>
 
-  <main class="container mx-auto px-4 py-8 flex-grow">
+  <main class="flex-grow">
     <router-outlet></router-outlet>
   </main>
 
-  <footer class="bg-gray-900 text-gray-400 py-12 border-t border-gray-800">
-    <div class="container mx-auto px-4 text-center">
-      <p class="font-bold text-white mb-2">M-CARS Food AI Ecosystem</p>
-      <p class="text-sm">© 2026 Developing the next generation of food delivery systems.</p>
+  <footer class="bg-accent-dark text-gray-500 py-16 mt-20">
+    <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-12 border-b border-white/5 pb-16">
+      <div>
+        <div class="flex items-center gap-3 text-white font-black text-2xl mb-6">
+          <span class="bg-primary-600 p-2 rounded-xl text-white">🍔</span> M-CARS Food
+        </div>
+        <p class="text-sm leading-relaxed">Nền tảng giao đồ ăn thông minh hàng đầu, tối ưu hóa bởi trí tuệ nhân tạo để mang lại trải nghiệm ẩm thực tốt nhất cho bạn.</p>
+      </div>
+      <div>
+        <h4 class="text-white font-black uppercase tracking-widest text-xs mb-8">Tính năng AI</h4>
+        <ul class="space-y-4 text-sm font-bold">
+          <li><a class="hover:text-primary-600 transition-colors cursor-pointer">Gợi ý thông minh (SCR)</a></li>
+          <li><a class="hover:text-primary-600 transition-colors cursor-pointer">Nhận diện món ăn (CNN)</a></li>
+          <li><a class="hover:text-primary-600 transition-colors cursor-pointer">Tối ưu lộ trình (TSP)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="text-white font-black uppercase tracking-widest text-xs mb-8">Liên hệ</h4>
+        <div class="flex gap-4">
+          <button class="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-xl hover:bg-primary-600 hover:text-white transition-all"><i class="ri-facebook-fill"></i></button>
+          <button class="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-xl hover:bg-primary-600 hover:text-white transition-all"><i class="ri-instagram-line"></i></button>
+          <button class="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-xl hover:bg-primary-600 hover:text-white transition-all"><i class="ri-twitter-fill"></i></button>
+        </div>
+      </div>
+    </div>
+    <div class="max-w-7xl mx-auto px-6 py-8 text-center text-xs font-bold tracking-widest uppercase opacity-30">
+      © 2026 M-CARS AI Ecosystem. All rights reserved.
     </div>
   </footer>
 </div>
+

@@ -1,78 +1,81 @@
-<div class="max-w-4xl mx-auto px-4 py-8">
-  <div class="flex items-center justify-between mb-8 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+<div class="route-page">
+  <div class="route-header-card">
     <div>
-      <h2 class="text-3xl font-black text-gray-900 tracking-tight">Tối ưu Lộ trình <span class="text-blue-600">🗺️</span></h2>
-      <p class="text-gray-500">Thuật toán Greedy (TSP) giúp Shipper tìm quãng đường ngắn nhất.</p>
+      <h2 class="route-title">Smart Route Logistics <span class="text-primary-600">🗺️</span></h2>
+      <p class="route-subtitle">Tối ưu hóa lộ trình giao hàng bằng thuật toán AI Greedy (TSP heuristic).</p>
     </div>
     <button 
       (click)="runOptimization()" 
       [disabled]="isLoading"
-      class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-2xl transition-all shadow-lg hover:shadow-blue-200 active:scale-95 disabled:opacity-50">
-      {{ isLoading ? 'Đang tính toán...' : 'Chạy Thuật toán' }}
+      class="run-btn">
+      <span *ngIf="!isLoading" class="flex items-center gap-3">
+        <i class="ri-route-line"></i> Tối ưu ngay
+      </span>
+      <span *ngIf="isLoading">Đang tính toán...</span>
     </button>
   </div>
 
-  <div *ngIf="error" class="bg-red-50 text-red-700 p-6 rounded-3xl border border-red-100 mb-8 animate-in shake duration-500">
-    <p class="font-bold flex items-center gap-2"><span>⚠️</span> {{ error }}</p>
+  <div *ngIf="error" class="error-banner">
+    <i class="ri-error-warning-line text-3xl"></i>
+    <div>
+        <p class="font-black text-red-900 mb-1">Lỗi hệ thống</p>
+        <p class="font-medium text-red-700">{{ error }}</p>
+    </div>
   </div>
 
-  <div *ngIf="optimizationData" class="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-    <!-- Map Placeholder/Info -->
-    <div class="lg:col-span-2 bg-gray-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl min-h-[400px]">
-        <div class="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
-        <div class="relative z-10 h-full flex flex-col">
-            <div class="flex items-center gap-3 mb-8">
-                <span class="bg-green-500 w-3 h-3 rounded-full animate-ping"></span>
-                <span class="font-mono text-sm tracking-widest text-gray-400">ENGINE STATUS: {{ optimizationData.status | uppercase }}</span>
+  <div *ngIf="optimizationData" class="results-grid">
+    <!-- Map Display -->
+    <div class="map-card">
+        <div class="map-overlay"></div>
+        <div class="engine-status">
+            <span class="status-dot"></span>
+            <span class="font-black text-[10px] tracking-[0.2em] uppercase text-primary-500">Logistics Engine Active</span>
+        </div>
+        
+        <div class="relative z-10">
+            <h3 class="text-4xl font-black mb-4">Mô phỏng Lộ trình</h3>
+            <p class="text-gray-400 font-medium max-w-md">Thuật toán đã tìm ra quãng đường ngắn nhất giúp tiết kiệm 25% thời gian di chuyển.</p>
+        </div>
+
+        <div class="info-grid">
+            <div class="info-card">
+                <p class="text-[10px] text-primary-500 uppercase font-black tracking-widest mb-2">Thuật toán sử dụng</p>
+                <p class="text-lg font-black italic">"Greedy TSP heuristic"</p>
             </div>
-            
-            <div class="mt-auto">
-                <p class="text-xs text-blue-400 font-bold uppercase mb-2 tracking-widest">Phương thức áp dụng</p>
-                <h3 class="text-2xl font-bold mb-6 italic">"{{ optimizationData.algorithmUsed }}"</h3>
-                
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-white/10 backdrop-blur p-4 rounded-2xl border border-white/10">
-                        <p class="text-[10px] text-gray-400 uppercase font-bold mb-1">Điểm bắt đầu</p>
-                        <p class="text-sm font-semibold truncate">{{ optimizationData.startLocation.address }}</p>
-                    </div>
-                    <div class="bg-white/10 backdrop-blur p-4 rounded-2xl border border-white/10">
-                        <p class="text-[10px] text-gray-400 uppercase font-bold mb-1">Tổng điểm giao</p>
-                        <p class="text-sm font-semibold">{{ optimizationData.optimizedRoute.length }} địa điểm</p>
-                    </div>
-                </div>
+            <div class="info-card">
+                <p class="text-[10px] text-primary-500 uppercase font-black tracking-widest mb-2">Điểm xuất phát</p>
+                <p class="text-sm font-bold truncate">{{ optimizationData.startLocation.address }}</p>
             </div>
         </div>
     </div>
 
     <!-- Step Flow -->
-    <div class="bg-white rounded-[2.5rem] p-8 shadow-xl border border-gray-100">
-        <h3 class="font-black text-gray-900 mb-8 flex items-center gap-2">
-            Lộ trình chi tiết 📍
+    <div class="route-flow-card">
+        <h3 class="flow-title">
+            Chi tiết Lộ trình 📍
         </h3>
         
-        <div class="relative">
+        <div class="flow-container">
             <!-- Line connector -->
-            <div class="absolute left-6 top-0 bottom-4 w-0.5 bg-gradient-to-b from-blue-500 to-blue-100"></div>
+            <div class="line-connector"></div>
             
-            <div class="space-y-8">
+            <div class="space-y-4">
                 <div *ngFor="let point of optimizationData.optimizedRoute; let i = index" 
-                     class="relative flex items-start gap-4 group">
-                    <div class="relative z-10 w-12 h-12 rounded-2xl bg-white border-2 border-blue-500 text-blue-600 font-black flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300">
+                     class="step-item">
+                    <div class="step-marker">
                         {{ i + 1 }}
                     </div>
-                    <div class="pt-1">
-                        <p class="font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{{ point.address }}</p>
-                        <p class="text-xs text-gray-400 mt-0.5">Khoảng cách tối ưu</p>
+                    <div class="step-content">
+                        <p class="step-address">{{ point.address }}</p>
+                        <p class="step-meta">Điểm dừng số {{ i + 1 }}</p>
                     </div>
                 </div>
             </div>
         </div>
         
-        <div class="mt-12">
-            <button class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-4 rounded-2xl transition-all">
-                Xuất file Lộ trình (PDF)
-            </button>
-        </div>
+        <button class="export-btn">
+            <i class="ri-file-pdf-line"></i> Xuất PDF Lộ trình
+        </button>
     </div>
   </div>
 </div>

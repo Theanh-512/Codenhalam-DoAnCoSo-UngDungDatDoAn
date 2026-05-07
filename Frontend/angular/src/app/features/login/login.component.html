@@ -1,63 +1,72 @@
-<div class="min-h-[calc(100vh-160px)] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-orange-50 to-white">
-  <div class="max-w-md w-full space-y-8 bg-white p-10 rounded-[2.5rem] shadow-2xl border border-orange-100">
-    <div class="text-center">
-      <div class="mx-auto h-20 w-20 bg-orange-600 rounded-3xl flex items-center justify-center text-4xl shadow-lg shadow-orange-200">
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-header">
+      <div class="login-logo">
         🍔
       </div>
-      <h2 class="mt-6 text-3xl font-black text-gray-900 tracking-tight">Chào mừng trở lại!</h2>
-      <p class="mt-2 text-sm text-gray-500">
-        Đăng nhập vào hệ thống đặt món M-CARS AI
-      </p>
+      <h2 class="login-title">Chào mừng!</h2>
+      <p class="login-subtitle">Đăng nhập để khám phá thế giới ẩm thực AI</p>
     </div>
 
-    <form class="mt-8 space-y-6" (ngSubmit)="onSubmit()">
-      <div class="space-y-4">
-        <div>
-          <label for="email" class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Email Address</label>
+    <form class="form-group" (ngSubmit)="onSubmit()">
+      <div>
+        <label for="email" class="form-label">Email Address</label>
+        <div class="relative">
+          <span class="absolute left-4 top-1/2 -translate-y-1/2 text-text-light text-xl">
+            <i class="ri-mail-line"></i>
+          </span>
           <input id="email" name="email" type="email" required [(ngModel)]="email"
-            class="appearance-none relative block w-full px-4 py-4 border border-gray-100 placeholder-gray-400 text-gray-900 rounded-2xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all bg-gray-50"
-            placeholder="admin@foodapp.com">
-           <p class="text-[10px] text-gray-400 mt-1 ml-1">Gợi ý: admin&#64;foodapp.com / admin123</p>
-        </div>
-        <div>
-          <label for="password" class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Password</label>
-          <input id="password" name="password" type="password" required [(ngModel)]="password"
-            class="appearance-none relative block w-full px-4 py-4 border border-gray-100 placeholder-gray-400 text-gray-900 rounded-2xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all bg-gray-50"
-            placeholder="••••••••">
-        </div>
-      </div>
-
-      <div *ngIf="errorMessage" class="text-red-500 text-sm font-bold bg-red-50 p-4 rounded-xl border border-red-100 text-center animate-bounce">
-        {{ errorMessage }}
-      </div>
-
-      <div class="flex items-center justify-between">
-        <div class="flex items-center">
-          <input id="remember-me" name="remember-me" type="checkbox" class="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded">
-          <label for="remember-me" class="ml-2 block text-sm text-gray-700">Ghi nhớ</label>
-        </div>
-        <div class="text-sm">
-          <a href="#" class="font-bold text-orange-600 hover:text-orange-500">Quên mật khẩu?</a>
+            class="form-input pl-12" placeholder="admin@foodapp.com">
         </div>
       </div>
 
       <div>
-        <button type="submit" [disabled]="isLoading"
-          class="group relative w-full flex justify-center py-4 px-4 border border-transparent text-sm font-black rounded-2xl text-white bg-gray-900 hover:bg-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 transition-all transform active:scale-95 shadow-xl shadow-gray-200">
-          <span *ngIf="!isLoading">Đăng nhập ngay</span>
-          <span *ngIf="isLoading" class="flex items-center gap-2">
-            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Đang xác thực...
+        <label for="password" class="form-label">Password</label>
+        <div class="relative">
+          <span class="absolute left-4 top-1/2 -translate-y-1/2 text-text-light text-xl">
+            <i class="ri-lock-line"></i>
           </span>
-        </button>
+          <input id="password" name="password" type="password" required [(ngModel)]="password"
+            class="form-input pl-12" placeholder="••••••••">
+        </div>
       </div>
-      
-      <div class="text-center mt-4">
-          <p class="text-sm text-gray-500">Chưa có tài khoản? <a class="font-bold text-orange-600 cursor-pointer">Đăng ký ngay</a></p>
+
+      <div *ngIf="errorMessage" class="error-message">
+        {{ errorMessage }}
       </div>
+
+      <div class="flex items-center justify-between mt-4">
+        <div class="flex items-center gap-2">
+          <input id="remember-me" name="remember-me" type="checkbox" class="w-5 h-5 rounded-lg border-border text-primary-600 focus:ring-primary-500">
+          <label for="remember-me" class="text-xs font-bold text-text-muted cursor-pointer">Ghi nhớ tôi</label>
+        </div>
+        <a class="text-xs font-bold text-primary-600 hover:text-primary-700 cursor-pointer">Quên mật khẩu?</a>
+      </div>
+
+      <button type="submit" [disabled]="isLoading" class="login-button">
+        <span *ngIf="!isLoading">Đăng nhập</span>
+        <span *ngIf="isLoading" class="flex items-center justify-center gap-3">
+          <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Đang xử lý...
+        </span>
+      </button>
+
+      <div class="social-login">
+        <p class="text-xs font-black text-text-light uppercase tracking-widest">Hoặc kết nối với</p>
+        <div class="social-icons">
+          <button type="button" class="social-btn text-[#1877F2] text-xl"><i class="ri-facebook-fill"></i></button>
+          <button type="button" class="social-btn text-[#DB4437] text-xl"><i class="ri-google-fill"></i></button>
+          <button type="button" class="social-btn text-[#1DA1F2] text-xl"><i class="ri-twitter-fill"></i></button>
+        </div>
+      </div>
+
+      <p class="mt-10 text-center text-sm font-medium text-text-muted">
+        Chưa có tài khoản? 
+        <a class="text-primary-600 font-bold hover:underline cursor-pointer">Đăng ký ngay</a>
+      </p>
     </form>
   </div>
 </div>

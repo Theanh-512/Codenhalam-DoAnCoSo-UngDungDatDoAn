@@ -1,0 +1,23 @@
+.stat-card {
+    @apply bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer;
+}
+
+.stat-card-header {
+    @apply flex items-center justify-between mb-4;
+}
+
+.stat-card-icon {
+    @apply w-12 h-12 rounded-2xl flex items-center justify-center text-2xl;
+}
+
+.stat-card-detail {
+    @apply text-[10px] font-black text-gray-300 uppercase tracking-widest;
+}
+
+.stat-card-label {
+    @apply text-gray-500 text-sm font-semibold mb-1;
+}
+
+.stat-card-value {
+    @apply text-3xl font-black text-gray-900 tracking-tight;
+}

@@ -1,0 +1,59 @@
+.management-page {
+  @apply max-w-7xl mx-auto;
+}
+
+.management-header {
+  @apply flex justify-between items-center mb-10;
+}
+
+.form-card {
+  @apply bg-white p-8 rounded-[2.5rem] border border-orange-100 shadow-xl mb-10 animate-in slide-in-from-top duration-500;
+}
+
+.form-label {
+  @apply block text-xs font-bold text-gray-400 uppercase mb-2;
+}
+
+.form-input {
+  @apply w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500;
+}
+
+.table-container {
+  @apply bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden;
+}
+
+.data-table {
+  @apply w-full text-left;
+}
+
+.table-header {
+  @apply bg-gray-50 border-b border-gray-100;
+}
+
+.table-th {
+  @apply px-6 py-5 text-xs font-black text-gray-400 uppercase tracking-widest;
+}
+
+.table-row {
+  @apply hover:bg-gray-50 transition-colors group;
+}
+
+.table-td {
+  @apply px-6 py-5;
+}
+
+.action-btns {
+  @apply flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity;
+}
+
+.edit-btn {
+  @apply p-2 text-blue-600 hover:bg-blue-50 rounded-lg;
+}
+
+.delete-btn {
+  @apply p-2 text-red-600 hover:bg-red-50 rounded-lg;
+}
+
+.loading-state {
+  @apply p-20 text-center;
+}

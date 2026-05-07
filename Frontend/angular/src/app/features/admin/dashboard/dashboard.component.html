@@ -1,28 +1,29 @@
-<div class="max-w-7xl mx-auto">
-  <header class="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="dashboard-page">
+  <header class="dashboard-header">
     <div>
-      <h1 class="text-4xl font-black text-gray-900 tracking-tight">Admin <span class="text-orange-600">Dashboard</span></h1>
-      <p class="text-gray-500 mt-1">Quản lý toàn bộ hệ thống đặt món và AI của bạn từ đây.</p>
+      <h1 class="dashboard-title">Hệ thống <span class="text-primary-600">Quản trị</span></h1>
+      <p class="dashboard-subtitle">Giám sát toàn bộ hoạt động kinh doanh và AI Insights của bạn.</p>
     </div>
     <div class="flex gap-4">
-        <button routerLink="/admin/restaurants" class="bg-gray-900 text-white px-6 py-3 rounded-2xl font-bold hover:bg-black transition-all shadow-xl shadow-gray-200">
-            + Thêm Nhà hàng
+        <button routerLink="/admin/restaurants" class="add-btn">
+            <i class="ri-add-circle-line"></i> Thêm Nhà hàng
         </button>
     </div>
   </header>
 
   <!-- Loading State -->
-  <div *ngIf="isLoading" class="flex items-center justify-center py-12">
-    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+  <div *ngIf="isLoading" class="flex flex-col items-center justify-center py-32">
+    <div class="animate-spin rounded-full h-16 w-16 border-4 border-primary-100 border-t-primary-600 mb-6"></div>
+    <p class="text-text-muted font-bold tracking-widest uppercase text-xs">Cơ sở dữ liệu đang đồng bộ...</p>
   </div>
 
   <!-- Stats Grid -->
-  <div *ngIf="!isLoading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+  <div *ngIf="!isLoading" class="stats-grid animate-in fade-in slide-in-from-bottom-8 duration-700">
     <app-stat-card 
       label="Tổng Nhà hàng" 
       [value]="restaurantCount" 
       icon="🏪" 
-      color="bg-blue-100 text-blue-600" 
+      color="bg-blue-50 text-blue-600" 
       link="/admin/restaurants">
     </app-stat-card>
     
@@ -30,7 +31,7 @@
       label="Người dùng" 
       [value]="userCount" 
       icon="👥" 
-      color="bg-purple-100 text-purple-600" 
+      color="bg-purple-50 text-purple-600" 
       link="/admin/users">
     </app-stat-card>
 
@@ -38,7 +39,7 @@
       label="Đơn hàng" 
       [value]="orderCount" 
       icon="📝" 
-      color="bg-green-100 text-green-600" 
+      color="bg-green-50 text-green-600" 
       link="/admin/orders">
     </app-stat-card>
 
@@ -46,48 +47,52 @@
       label="Doanh thu" 
       value="54.2M" 
       icon="💰" 
-      color="bg-orange-100 text-orange-600" 
+      color="bg-orange-50 text-orange-600" 
       link="/admin/dashboard">
     </app-stat-card>
   </div>
 
   <!-- Main Management Area -->
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-    <div class="lg:col-span-2 space-y-8">
-        <div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm overflow-hidden relative">
-            <div class="absolute top-0 right-0 w-32 h-32 bg-orange-50 rounded-full -mr-16 -mt-16 blur-2xl"></div>
-            <h3 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <span class="text-orange-600">⚡</span> Hoạt động gần đây
+  <div class="management-area">
+    <div class="main-column">
+        <div class="activity-card">
+            <div class="activity-bg-blur"></div>
+            <h3 class="section-title">
+                <span class="text-primary-600"><i class="ri-flashlight-line"></i></span> Hoạt động mới nhất
             </h3>
-            <div class="space-y-6">
-                <div class="flex items-start gap-4 p-4 hover:bg-gray-50 rounded-2xl transition-colors cursor-pointer border border-transparent hover:border-gray-100">
-                    <div class="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center font-bold">NH</div>
-                    <div>
-                        <p class="font-bold text-gray-900 text-sm">Nhà hàng "Phở Thìn" vừa cập nhật thực đơn</p>
-                        <p class="text-xs text-gray-400">10 phút trước</p>
+            <div class="activity-list">
+                <div class="activity-item">
+                    <div class="activity-icon bg-orange-100 text-orange-600">NH</div>
+                    <div class="flex-grow">
+                        <p class="font-black text-accent-dark">"Phở Thìn" đã cập nhật Menu</p>
+                        <p class="text-xs text-text-muted font-medium mt-1">10 phút trước • Admin Action</p>
                     </div>
+                    <i class="ri-arrow-right-s-line text-text-light text-xl"></i>
                 </div>
-                <div class="flex items-start gap-4 p-4 hover:bg-gray-50 rounded-2xl transition-colors cursor-pointer">
-                    <div class="w-10 h-10 rounded-xl bg-green-100 text-green-600 flex items-center justify-center font-bold">ĐH</div>
-                    <div>
-                        <p class="font-bold text-gray-900 text-sm">Người dùng t***1&#64;gmail.com vừa đặt đơn mới</p>
-                        <p class="text-xs text-gray-400">25 phút trước</p>
+                <div class="activity-item">
+                    <div class="activity-icon bg-green-100 text-green-600">ĐH</div>
+                    <div class="flex-grow">
+                        <p class="font-black text-accent-dark">Đơn hàng mới #88492 từ t***1&#64;gmail.com</p>
+                        <p class="text-xs text-text-muted font-medium mt-1">25 phút trước • Automated</p>
                     </div>
+                    <i class="ri-arrow-right-s-line text-text-light text-xl"></i>
                 </div>
             </div>
         </div>
     </div>
     
-    <div class="space-y-8">
-        <div class="bg-gray-900 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden">
-            <div class="absolute bottom-0 right-0 w-32 h-32 bg-orange-600/30 rounded-full -mb-16 -mr-16 blur-3xl"></div>
-            <h3 class="text-xl font-bold mb-6">Trợ lý AI Admin</h3>
-            <p class="text-gray-400 text-sm leading-relaxed mb-6 italic">
-                "Dựa trên dữ liệu 7 ngày qua, hệ thống gợi ý bạn nên chạy khuyến mãi cho các quán Café vào buổi sáng để tối ưu doanh thu."
-            </p>
-            <button class="w-full bg-white text-gray-900 font-bold py-3 rounded-xl hover:bg-orange-500 hover:text-white transition-all active:scale-95">
-                Xem chi tiết AI Insight
-            </button>
+    <div class="sidebar-column">
+        <div class="ai-assistant-card">
+            <div class="ai-assistant-bg"></div>
+            <div class="relative z-10">
+                <h3 class="ai-assistant-title">Trợ lý AI Admin 🧠</h3>
+                <p class="ai-assistant-text">
+                    "Phân tích dữ liệu 7 ngày qua cho thấy nhu cầu đặt món tăng 15% vào khung giờ 11h-13h. Bạn nên đề xuất các gói combo cho nhà hàng."
+                </p>
+                <button class="ai-assistant-btn font-black">
+                    Chi tiết AI Insight
+                </button>
+            </div>
         </div>
     </div>
   </div>

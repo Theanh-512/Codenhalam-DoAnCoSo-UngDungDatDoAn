@@ -1,1 +1,10 @@
-<p>stat-card works!</p>
+<div [routerLink]="link" class="stat-card group">
+  <div class="stat-card-header">
+    <span [class]="color + ' stat-card-icon shadow-inner group-hover:scale-110 transition-transform'">
+      {{ icon }}
+    </span>
+    <span class="stat-card-detail">Detail →</span>
+  </div>
+  <p class="stat-card-label">{{ label }}</p>
+  <h3 class="stat-card-value">{{ value }}</h3>
+</div>

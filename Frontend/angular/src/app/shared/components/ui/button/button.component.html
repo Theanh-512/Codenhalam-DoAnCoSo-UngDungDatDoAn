@@ -1,1 +1,9 @@
-<p>button works!</p>
+<button 
+  [type]="type"
+  [disabled]="disabled || isLoading"
+  (click)="onClick.emit($event)"
+  [ngClass]="getClasses()"
+>
+  <span *ngIf="isLoading" class="loader mr-2 animate-spin">🌀</span>
+  <ng-content></ng-content>
+</button>

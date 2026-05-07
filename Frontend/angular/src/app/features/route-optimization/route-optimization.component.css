@@ -1,0 +1,256 @@
+.route-page {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+}
+
+.route-header-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 3rem;
+  background-color: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  padding: 2.5rem;
+  border-radius: 3rem;
+  gap: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: var(--shadow-premium);
+}
+
+@media (min-width: 768px) {
+  .route-header-card {
+    flex-direction: row;
+  }
+}
+
+.route-title {
+  font-size: 2.25rem;
+  font-weight: 900;
+  color: var(--accent-dark);
+  letter-spacing: -0.05em;
+}
+
+.route-subtitle {
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-top: 0.5rem;
+}
+
+.run-btn {
+  background-color: var(--primary);
+  color: white;
+  font-weight: 800;
+  padding: 1rem 2.5rem;
+  border-radius: var(--radius-pill);
+  border: none;
+  font-size: 1.125rem;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.error-banner {
+  background-color: #fef2f2;
+  color: #dc2626;
+  padding: 2rem;
+  border-radius: 1.5rem;
+  border: 1px solid #fee2e2;
+  margin-bottom: 3rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.results-grid {
+  display: grid;
+  grid-template-cols: 1fr;
+  gap: 3rem;
+}
+
+@media (min-width: 1024px) {
+  .results-grid {
+    grid-template-cols: repeat(3, 1fr);
+  }
+}
+
+.map-card {
+  grid-column: span 1;
+  background-color: var(--accent-dark);
+  border-radius: 3rem;
+  padding: 3rem;
+  color: white;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-premium);
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 1024px) {
+  .map-card {
+    grid-column: span 2;
+  }
+}
+
+.map-overlay {
+  position: absolute;
+  inset: 0;
+  opacity: 0.1;
+  background-image: url('https://www.transparenttextures.com/patterns/carbon-fibre.png');
+}
+
+.engine-status {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2.5rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.75rem 1.5rem;
+  border-radius: 1rem;
+  align-self: flex-start;
+}
+
+.status-dot {
+  background-color: #22c55e;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 9999px;
+  animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-cols: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-top: auto;
+  position: relative;
+  z-index: 10;
+}
+
+.info-card {
+  background-color: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  padding: 1.5rem;
+  border-radius: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: background-color 0.3s ease;
+}
+
+.info-card:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.route-flow-card {
+  background-color: white;
+  border-radius: 3rem;
+  padding: 2.5rem;
+  box-shadow: var(--shadow-premium);
+  border: 1px solid rgba(241, 233, 226, 0.5);
+}
+
+.flow-title {
+  font-weight: 900;
+  font-size: 1.5rem;
+  color: var(--accent-dark);
+  margin-bottom: 2.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.flow-container {
+  position: relative;
+  padding-left: 2rem;
+}
+
+.line-connector {
+  position: absolute;
+  left: 1.5rem;
+  top: 1rem;
+  bottom: 2rem;
+  width: 4px;
+  background: linear-gradient(to bottom, var(--primary), #fb923c, #fff7ed);
+  border-radius: 9999px;
+}
+
+.step-item {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+}
+
+.step-item:last-child {
+  margin-bottom: 0;
+}
+
+.step-marker {
+  position: absolute;
+  left: -2.5rem;
+  z-index: 10;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 1rem;
+  background-color: white;
+  border: 4px solid var(--primary);
+  color: var(--primary);
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  transition: all 0.5s ease;
+}
+
+.step-item:hover .step-marker {
+  transform: scale(1.1);
+  background-color: var(--primary);
+  color: white;
+}
+
+.step-address {
+  font-weight: 900;
+  color: var(--accent-dark);
+  font-size: 1.125rem;
+  transition: color 0.3s ease;
+}
+
+.step-item:hover .step-address {
+  color: var(--primary);
+}
+
+.step-meta {
+  font-size: 0.75rem;
+  font-weight: 900;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: 0.25rem;
+}
+
+.export-btn {
+  width: 100%;
+  padding: 1rem;
+  background-color: var(--bg-surface);
+  color: var(--text-muted);
+  font-weight: 800;
+  border-radius: var(--radius-pill);
+  border: none;
+  font-size: 0.875rem;
+  margin-top: 2.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.export-btn:hover {
+  background-color: var(--border-color);
+}

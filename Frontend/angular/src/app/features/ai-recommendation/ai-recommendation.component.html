@@ -1,40 +1,49 @@
-<div class="max-w-6xl mx-auto px-4 py-8">
-  <div class="bg-gray-900 rounded-3xl p-8 mb-12 relative overflow-hidden shadow-2xl">
-    <div class="absolute top-0 right-0 w-64 h-64 bg-orange-600/20 rounded-full blur-3xl -mr-32 -mt-32 animate-pulse"></div>
-    <div class="relative z-10">
-      <h2 class="text-4xl font-extrabold text-white mb-4 tracking-tight flex items-center gap-3">
-        Gợi ý từ AI <span class="text-orange-500">🧠</span>
+<div class="ai-page">
+  <div class="ai-hero">
+    <div class="hero-bg-accent"></div>
+    <div class="ai-content">
+      <div class="ai-badge">
+        <span class="w-2 h-2 rounded-full bg-primary-600 animate-ping"></span>
+        Deep Learning Powered
+      </div>
+      <h2 class="ai-title">
+        Gợi ý cá nhân hóa <br>
+        <span class="text-primary-600">từ bộ não AI</span>
       </h2>
-      <p class="text-gray-300 text-lg max-w-2xl leading-relaxed">
-        Hệ thống sử dụng mô hình <span class="text-orange-400 font-semibold italic">SCR (Deep Sequential Model)</span> 
-        để phân tích thói quen và vị trí của bạn nhằm đưa ra những lựa chọn hoàn hảo nhất ngay lúc này.
+      <p class="ai-description">
+        Mô hình <span class="text-white font-bold italic">SCR (Deep Sequential Model)</span> đang phân tích 
+        hàng triệu điểm dữ liệu về sở thích và vị trí của bạn để đưa ra thực đơn hoàn hảo nhất.
       </p>
     </div>
   </div>
 
-  <div *ngIf="isLoading" class="flex flex-col items-center justify-center py-24">
-    <div class="relative w-20 h-20">
-      <div class="absolute inset-0 border-4 border-orange-200 rounded-full"></div>
-      <div class="absolute inset-0 border-4 border-orange-600 rounded-full border-t-transparent animate-spin"></div>
+  <div *ngIf="isLoading" class="loading-container">
+    <div class="ai-loader">
+      <div class="loader-ring"></div>
+      <div class="loader-orbit"></div>
+      <div class="absolute inset-0 flex items-center justify-center text-3xl">🧠</div>
     </div>
-    <p class="mt-6 text-gray-500 font-medium animate-pulse">Neural network đang tính toán xác suất...</p>
+    <p class="loader-text">Neural Network is thinking...</p>
   </div>
 
-  <div *ngIf="error" class="bg-red-50 border-l-4 border-red-500 p-6 rounded-2xl mb-8 flex items-center gap-4 text-red-700 shadow-sm">
-      <span class="text-2xl">⚠️</span>
-      <p class="font-medium">{{ error }}</p>
+  <div *ngIf="error" class="error-banner">
+      <div class="error-icon">⚠️</div>
+      <div>
+        <h4 class="font-black text-red-900 text-lg mb-1">Hệ thống đang bảo trì</h4>
+        <p class="text-red-700 font-medium">{{ error }}</p>
+      </div>
   </div>
 
-  <div *ngIf="!isLoading && !error && recommendations.length > 0" 
-       class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+  <div *ngIf="!isLoading && !error && recommendations.length > 0" class="recommendations-grid">
     <app-restaurant-card 
       *ngFor="let res of recommendations" 
       [restaurant]="res">
     </app-restaurant-card>
   </div>
   
-  <div *ngIf="!isLoading && !error && recommendations.length === 0" class="text-center py-24 opacity-40">
-      <span class="text-6xl mb-4 block">🏜️</span>
-      <p class="text-xl font-medium">Hiện tại không có gợi ý nào khả dụng.</p>
+  <div *ngIf="!isLoading && !error && recommendations.length === 0" class="empty-state">
+      <span class="text-8xl mb-6 block">🏜️</span>
+      <p class="text-2xl font-black text-accent-dark">Chúng tôi không tìm thấy gợi ý nào...</p>
+      <p class="text-text-muted mt-2 font-medium">Hãy thử thay đổi vị trí của bạn!</p>
   </div>
 </div>
