@@ -48,13 +48,29 @@ namespace API.Controllers
             return menu;
         }
 
+        // POST: api/Restaurants/{id}/menu
+        [HttpPost("{id}/menu")]
+        public async Task<ActionResult<FoodItem>> AddMenuItem(int id, FoodItem item)
+        {
+            var restaurant = await _context.Restaurants.FindAsync(id);
+            if (restaurant == null) return NotFound("Restaurant not found");
+
+            item.RestaurantId = id;
+            if (item.CategoryId == 0) item.CategoryId = 1; // Default category if not provided
+            
+            _context.FoodItems.Add(item);
+            await _context.SaveChangesAsync();
+
+            return Ok(item);
+        }
+
         // GET: api/Restaurants/recommend
         [HttpGet("recommend")]
         public async Task<ActionResult<IEnumerable<Restaurant>>> GetRecommendedRestaurants([FromQuery] int userId, [FromQuery] double lat, [FromQuery] double lng)
         {
             // THEO BÁO CÁO: Tối ưu hóa cơ chế Caching cho dữ liệu Long-term
             var cacheKey = $"User_{userId}_Lat_{lat}_Lng_{lng}_Recs";
-            if (_cache.TryGetValue(cacheKey, out List<Restaurant> cachedRestaurants))
+            if (_cache.TryGetValue(cacheKey, out List<Restaurant>? cachedRestaurants) && cachedRestaurants != null)
             {
                 return cachedRestaurants;
             }

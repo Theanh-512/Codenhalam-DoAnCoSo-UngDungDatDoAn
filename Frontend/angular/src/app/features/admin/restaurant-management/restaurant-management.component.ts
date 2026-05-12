@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RestaurantService, Restaurant } from '../../../core/services/restaurant.service';
+import { RestaurantService, Restaurant, FoodItem } from '../../../core/services/restaurant.service';
 import { ButtonComponent } from '../../../shared/components/ui/button/button.component';
 
 @Component({
@@ -13,9 +13,9 @@ import { ButtonComponent } from '../../../shared/components/ui/button/button.com
 })
 export class RestaurantManagementComponent implements OnInit {
   restaurants: Restaurant[] = [];
-  selectedRestaurant: Restaurant = this.getEmptyRestaurant();
-  isEditing = false;
-  showForm = false;
+  currentRestaurant: Restaurant = this.getEmptyRestaurant();
+  isEditMode = false;
+  showModal = false;
   isLoading = false;
 
   constructor(private restaurantService: RestaurantService) {}
@@ -46,17 +46,24 @@ export class RestaurantManagementComponent implements OnInit {
       imageUrl: '',
       openingHours: '08:00 - 22:00',
       latitude: 21.0,
-      longitude: 105.8
+      longitude: 105.8,
+      isActive: true
     };
   }
 
-  onEdit(restaurant: Restaurant) {
-    this.selectedRestaurant = { ...restaurant };
-    this.isEditing = true;
-    this.showForm = true;
+  openAddModal() {
+    this.currentRestaurant = this.getEmptyRestaurant();
+    this.isEditMode = false;
+    this.showModal = true;
   }
 
-  onDelete(id: number | undefined) {
+  editRestaurant(restaurant: Restaurant) {
+    this.currentRestaurant = { ...restaurant };
+    this.isEditMode = true;
+    this.showModal = true;
+  }
+
+  deleteRestaurant(id: number | undefined) {
     if (id && confirm('Bạn có chắc chắn muốn xóa nhà hàng này?')) {
       this.restaurantService.delete(id).subscribe(() => {
         this.loadRestaurants();
@@ -64,23 +71,63 @@ export class RestaurantManagementComponent implements OnInit {
     }
   }
 
-  onSubmit() {
-    if (this.isEditing && this.selectedRestaurant.id) {
-      this.restaurantService.update(this.selectedRestaurant.id, this.selectedRestaurant).subscribe(() => {
-        this.resetForm();
+  saveRestaurant() {
+    if (this.isEditMode && this.currentRestaurant.id) {
+      this.restaurantService.update(this.currentRestaurant.id, this.currentRestaurant).subscribe(() => {
+        this.closeModal();
         this.loadRestaurants();
       });
     } else {
-      this.restaurantService.create(this.selectedRestaurant).subscribe(() => {
-        this.resetForm();
+      this.restaurantService.create(this.currentRestaurant).subscribe(() => {
+        this.closeModal();
         this.loadRestaurants();
       });
     }
   }
 
-  resetForm() {
-    this.selectedRestaurant = this.getEmptyRestaurant();
-    this.isEditing = false;
-    this.showForm = false;
+  closeModal() {
+    this.currentRestaurant = this.getEmptyRestaurant();
+    this.isEditMode = false;
+    this.showModal = false;
+  }
+
+  // ---- Menu Management ----
+  showMenuModal = false;
+  currentMenu: FoodItem[] = [];
+  newFoodItem: FoodItem = this.getEmptyFoodItem();
+  selectedRestaurantId?: number;
+
+  getEmptyFoodItem(): FoodItem {
+    return { name: '', description: '', price: 0, imageUrl: '', rating: 5.0 };
+  }
+
+  openMenuModal(res: Restaurant) {
+    if (!res.id) return;
+    this.selectedRestaurantId = res.id;
+    this.showMenuModal = true;
+    this.loadMenu(res.id);
+  }
+
+  loadMenu(id: number) {
+    this.restaurantService.getMenu(id).subscribe({
+      next: (data) => this.currentMenu = data,
+      error: () => this.currentMenu = []
+    });
+  }
+
+  addFoodItem() {
+    if (this.selectedRestaurantId && this.newFoodItem.name) {
+      this.restaurantService.addMenuItem(this.selectedRestaurantId, this.newFoodItem).subscribe(() => {
+        this.loadMenu(this.selectedRestaurantId!);
+        this.newFoodItem = this.getEmptyFoodItem();
+      });
+    }
+  }
+
+  closeMenuModal() {
+    this.showMenuModal = false;
+    this.currentMenu = [];
+    this.newFoodItem = this.getEmptyFoodItem();
   }
 }
+

@@ -1,0 +1,177 @@
+<div class="mobile-app-container">
+
+  <!-- HOME TAB -->
+  <ng-container *ngIf="activeTab === 'Home'">
+    <!-- Header & Search -->
+    <div class="header-section">
+      <div class="search-bar">
+        <i class="ri-search-line search-icon"></i>
+        <input type="text" placeholder="Search for food or restaurants..." class="search-input" [(ngModel)]="searchQuery">
+        <i *ngIf="searchQuery" class="ri-close-line search-clear" (click)="searchQuery = ''"></i>
+      </div>
+      <div class="location-row" *ngIf="!searchQuery">
+        <i class="ri-map-pin-line location-icon"></i>
+        <span class="location-text">9 West 46th Street, New York City</span>
+      </div>
+    </div>
+
+    <!-- Categories -->
+    <div class="categories-row" *ngIf="!searchQuery">
+      <div *ngFor="let cat of categories" class="category-item" (click)="setCategory(cat.name)">
+        <div class="category-icon-box" 
+             [ngClass]="activeCategory === cat.name ? 'bg-primary text-white shadow-md' : 'bg-white shadow-sm'">
+          {{ cat.icon }}
+        </div>
+        <span class="category-name" [class.active]="activeCategory === cat.name">{{ cat.name }}</span>
+      </div>
+    </div>
+
+    <!-- Food Menu -->
+    <div class="section-header" *ngIf="filteredFoodMenus.length > 0">
+      <h2 class="section-title">Food Menu</h2>
+    </div>
+    
+    <div class="food-menu-grid">
+      <div *ngFor="let menu of filteredFoodMenus" class="menu-card" [style.backgroundColor]="menu.bg" (click)="selectFood(menu.name)">
+        <h3 class="menu-card-title">{{ menu.name }}</h3>
+        <img [src]="menu.img" [alt]="menu.name" class="menu-card-img">
+      </div>
+    </div>
+
+    <!-- Near me / Restaurants -->
+    <div class="section-header mt-6">
+      <h2 class="section-title">{{ searchQuery ? 'Search Results' : 'Near me' }}</h2>
+      <a href="#" class="see-all" *ngIf="!searchQuery">See all</a>
+    </div>
+
+    <div class="restaurant-list">
+      <div *ngFor="let rest of filteredRestaurants" class="restaurant-card-list" (click)="selectRestaurant(rest.name)">
+        <img [src]="rest.img" [alt]="rest.name" class="rest-img">
+        <div class="rest-info">
+          <h3 class="rest-name">{{ rest.name }}</h3>
+          <p class="rest-address"><i class="ri-map-pin-line"></i> {{ rest.address }}</p>
+          <p class="rest-distance"><i class="ri-time-line"></i> {{ rest.distance }}</p>
+          <div class="rest-rating">
+            <i class="ri-star-fill text-primary"></i>
+            <i class="ri-star-fill text-primary"></i>
+            <i class="ri-star-fill text-primary"></i>
+            <i class="ri-star-fill text-primary"></i>
+            <i class="ri-star-half-fill text-primary"></i>
+            <span class="rating-text">({{ rest.rating }})</span>
+          </div>
+        </div>
+      </div>
+      <div *ngIf="filteredRestaurants.length === 0" class="text-center py-8 text-text-muted">
+        Không tìm thấy nhà hàng nào phù hợp với "{{ searchQuery }}"
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- ORDER TAB -->
+  <ng-container *ngIf="activeTab === 'Order'">
+    <div class="order-map-container">
+      <div class="map-bg">
+        <!-- SVG Path representing the route on the map -->
+        <svg viewBox="0 0 400 400" class="map-route-svg">
+          <path d="M 100 100 L 250 200 L 200 300" fill="none" stroke="#2563eb" stroke-width="4" stroke-dasharray="5,5"/>
+          <circle cx="100" cy="100" r="12" fill="#ea580c" />
+          <circle cx="200" cy="300" r="12" fill="#ea580c" />
+        </svg>
+      </div>
+      <button class="target-location-btn"><i class="ri-focus-3-line"></i></button>
+    </div>
+    <div class="order-details-card">
+      <h2 class="order-dest-title">University</h2>
+      <p class="order-eta">Arrives in 21 minutes</p>
+      
+      <div class="order-summary-box">
+        <div class="flex justify-between items-center mb-2 cursor-pointer">
+          <h4 class="font-bold text-sm text-gray-800">Food | Pizza Lover Company Food Order</h4>
+          <i class="ri-arrow-right-s-line text-gray-400"></i>
+        </div>
+        <p class="text-xs text-gray-500 mb-1 flex items-center gap-2"><i class="ri-wallet-3-line text-gray-400"></i> $89.99 - Paid by Credit Card</p>
+        <p class="text-xs text-gray-500 flex items-center gap-2"><i class="ri-truck-line text-gray-400"></i> Ship to 9 West 46th Street, New York City</p>
+      </div>
+
+      <div class="shipper-profile">
+        <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80" alt="Shipper" class="shipper-img">
+        <div class="shipper-info">
+          <h4 class="font-bold text-sm text-gray-800">Hank Hirthe</h4>
+          <p class="text-xs text-gray-500 truncate">Shipper - delivering orders...</p>
+        </div>
+        <div class="shipper-actions">
+          <button class="action-btn"><i class="ri-phone-fill"></i></button>
+          <button class="action-btn primary"><i class="ri-message-2-fill"></i></button>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- LIST TAB -->
+  <ng-container *ngIf="activeTab === 'List'">
+    <div class="header-section text-center pb-4 border-b border-gray-100">
+      <h2 class="text-xl font-black">My Favorites</h2>
+    </div>
+    <div class="flex flex-col items-center justify-center py-20 text-center">
+      <span class="text-6xl mb-4">❤️</span>
+      <h3 class="text-lg font-bold mb-2">Your list is empty</h3>
+      <p class="text-sm text-gray-500">Save your favorite restaurants here to order faster next time.</p>
+    </div>
+  </ng-container>
+
+  <!-- PROFILE TAB -->
+  <ng-container *ngIf="activeTab === 'Profile'">
+    <div class="header-section text-center pb-4 border-b border-gray-100">
+      <h2 class="text-xl font-black">Profile</h2>
+    </div>
+    <div class="py-6">
+      <div class="flex items-center gap-4 mb-8 bg-gray-50 p-4 rounded-2xl">
+        <div class="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center text-primary text-2xl font-black">
+          U
+        </div>
+        <div>
+          <h3 class="font-bold text-lg">User Account</h3>
+          <p class="text-sm text-gray-500">user&#64;example.com</p>
+        </div>
+      </div>
+      
+      <div class="flex flex-col gap-3">
+        <div class="flex items-center justify-between p-4 bg-white shadow-sm border border-gray-100 rounded-xl cursor-pointer">
+          <div class="flex items-center gap-3 font-bold"><i class="ri-map-pin-line text-primary"></i> Addresses</div>
+          <i class="ri-arrow-right-s-line text-gray-400"></i>
+        </div>
+        <div class="flex items-center justify-between p-4 bg-white shadow-sm border border-gray-100 rounded-xl cursor-pointer">
+          <div class="flex items-center gap-3 font-bold"><i class="ri-bank-card-line text-primary"></i> Payment Methods</div>
+          <i class="ri-arrow-right-s-line text-gray-400"></i>
+        </div>
+        <div class="flex items-center justify-between p-4 bg-white shadow-sm border border-gray-100 rounded-xl cursor-pointer">
+          <div class="flex items-center gap-3 font-bold"><i class="ri-settings-4-line text-primary"></i> Settings</div>
+          <i class="ri-arrow-right-s-line text-gray-400"></i>
+        </div>
+        <div class="flex items-center justify-between p-4 mt-4 bg-red-50 text-red-600 rounded-xl cursor-pointer font-bold" (click)="logout()">
+          <div class="flex items-center gap-3"><i class="ri-logout-box-line"></i> Log out</div>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- Bottom Navigation -->
+  <div class="bottom-nav">
+    <div class="nav-item" [class.active]="activeTab === 'Home'" (click)="setTab('Home')">
+      <i class="nav-icon" [ngClass]="activeTab === 'Home' ? 'ri-home-5-fill' : 'ri-home-5-line'"></i>
+      <span>Home</span>
+    </div>
+    <div class="nav-item" [class.active]="activeTab === 'Order'" (click)="setTab('Order')">
+      <i class="nav-icon" [ngClass]="activeTab === 'Order' ? 'ri-file-list-3-fill' : 'ri-file-list-3-line'"></i>
+      <span>Order</span>
+    </div>
+    <div class="nav-item" [class.active]="activeTab === 'List'" (click)="setTab('List')">
+      <i class="nav-icon" [ngClass]="activeTab === 'List' ? 'ri-bookmark-fill' : 'ri-bookmark-line'"></i>
+      <span>My List</span>
+    </div>
+    <div class="nav-item" [class.active]="activeTab === 'Profile'" (click)="setTab('Profile')">
+      <i class="nav-icon" [ngClass]="activeTab === 'Profile' ? 'ri-user-fill' : 'ri-user-line'"></i>
+      <span>Profile</span>
+    </div>
+  </div>
+</div>

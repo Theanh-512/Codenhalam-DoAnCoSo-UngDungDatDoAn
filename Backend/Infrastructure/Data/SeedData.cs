@@ -112,6 +112,51 @@ namespace Infrastructure.Data
                     await context.SaveChangesAsync();
                 }
             }
+
+            // Tạo tracking logs giả để demo AI
+            if (!await context.TrackingLogs.AnyAsync())
+            {
+                var logs = new List<TrackingLog>();
+                var random = new System.Random(42);
+                
+                // Giả định User ID 1 là Nguyễn Văn A (test1@gmail.com)
+                var userA = await context.Users.FirstOrDefaultAsync(u => u.Email == "test1@gmail.com");
+                var phoStore = await context.Restaurants.FirstOrDefaultAsync(r => r.Name == "Phở Thìn Lò Đúc");
+                var pizzaStore = await context.Restaurants.FirstOrDefaultAsync(r => r.Name == "Pizza 4P's");
+
+                if (userA != null && phoStore != null && pizzaStore != null)
+                {
+                    // User A thích Phở -> logs nhiều cho Phở Thìn
+                    for (int i = 0; i < 20; i++)
+                    {
+                        logs.Add(new TrackingLog {
+                            UserId = userA.Id,
+                            RestaurantId = phoStore.Id,
+                            ActionType = i % 3 == 0 ? "AddToCart" : "View",
+                            Latitude = 21.018,
+                            Longitude = 105.856,
+                            Timestamp = System.DateTime.UtcNow.AddDays(-random.Next(30)),
+                            DeviceInfo = "Android"
+                        });
+                    }
+                    // User A cũng xem Pizza nhưng ít hơn
+                    for (int i = 0; i < 8; i++)
+                    {
+                        logs.Add(new TrackingLog {
+                            UserId = userA.Id, 
+                            RestaurantId = pizzaStore.Id,
+                            ActionType = "View",
+                            Latitude = 21.018, 
+                            Longitude = 105.856,
+                            Timestamp = System.DateTime.UtcNow.AddDays(-random.Next(15)),
+                            DeviceInfo = "Android"
+                        });
+                    }
+                    context.TrackingLogs.AddRange(logs);
+                    await context.SaveChangesAsync();
+                }
+            }
         }
     }
 }
+

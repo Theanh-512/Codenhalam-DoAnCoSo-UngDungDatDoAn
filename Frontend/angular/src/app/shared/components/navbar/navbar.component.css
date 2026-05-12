@@ -13,7 +13,7 @@
 }
 
 .navbar-container {
-  max-w-7xl;
+  max-width: 80rem;
   margin: 0 auto;
   display: flex;
   justify-content: space-between;

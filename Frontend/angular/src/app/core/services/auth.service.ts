@@ -38,6 +38,20 @@ export class AuthService {
     );
   }
 
+  register(fullName: string, phoneNumber: string, email: string, password: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/register`, { fullName, phoneNumber, email, password }).pipe(
+      tap(response => {
+        const user: User = {
+          id: response.id,
+          email: response.email,
+          role: 'user'
+        };
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        this.currentUserSubject.next(user);
+      })
+    );
+  }
+
   logout() {
     localStorage.removeItem('currentUser');
     this.currentUserSubject.next(null);

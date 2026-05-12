@@ -1,84 +1,177 @@
 <div class="management-page">
-  <div class="management-header">
+  <header class="management-header">
     <div>
-      <h2 class="text-3xl font-black text-gray-900 tracking-tight">Quản lý <span class="text-orange-600">Nhà hàng</span></h2>
-      <p class="text-gray-500">Thêm, sửa hoặc xóa các nhà hàng trong hệ thống.</p>
+      <h2 class="management-title">Quản lý <span class="text-primary-600">Hệ thống Nhà hàng</span></h2>
+      <p class="text-text-muted font-medium mt-1">Danh sách tất cả các đối tác trong hệ sinh thái M-CARS.</p>
     </div>
-    <app-ui-button (onClick)="showForm = !showForm; isEditing = false; selectedRestaurant = getEmptyRestaurant()">
-      {{ showForm ? '× Đóng Form' : '+ Thêm Nhà hàng mới' }}
-    </app-ui-button>
-  </div>
+    <button (click)="openAddModal()" class="btn-primary">
+      <i class="ri-add-line"></i> Thêm nhà hàng mới
+    </button>
+  </header>
 
-  <!-- CRUD Form -->
-  <div *ngIf="showForm" class="form-card">
-    <h3 class="text-xl font-bold mb-6 text-gray-800">{{ isEditing ? 'Cập nhật Nhà hàng' : 'Tạo Nhà hàng mới' }}</h3>
-    <form (ngSubmit)="onSubmit()" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div class="space-y-4">
-        <div>
-          <label class="form-label">Tên nhà hàng</label>
-          <input name="name" [(ngModel)]="selectedRestaurant.name" class="form-input" placeholder="Nhập tên...">
-        </div>
-        <div>
-          <label class="form-label">Mô tả</label>
-          <textarea name="desc" [(ngModel)]="selectedRestaurant.description" class="form-input" rows="3"></textarea>
-        </div>
-      </div>
-      <div class="space-y-4">
-        <div>
-          <label class="form-label">Địa chỉ</label>
-          <input name="addr" [(ngModel)]="selectedRestaurant.address" class="form-input">
-        </div>
-        <div>
-          <label class="form-label">Hình ảnh (URL)</label>
-          <input name="img" [(ngModel)]="selectedRestaurant.imageUrl" class="form-input">
-        </div>
-      </div>
-      <div class="md:col-span-2 flex justify-end gap-3 mt-4">
-          <button type="button" (click)="resetForm()" class="px-6 py-3 text-gray-500 font-bold">Hủy bỏ</button>
-          <app-ui-button type="submit" variant="secondary">
-            Lưu thông tin
-          </app-ui-button>
-      </div>
-    </form>
-  </div>
-
-  <!-- Data Table -->
   <div class="table-container">
-    <table class="data-table">
-      <thead class="table-header">
+    <table class="premium-table">
+      <thead>
         <tr>
-          <th class="table-th">Nhà hàng</th>
-          <th class="table-th">Địa chỉ</th>
-          <th class="table-th text-right">Thao tác</th>
+          <th>Nhà hàng</th>
+          <th>Thông tin liên hệ</th>
+          <th>Tọa độ (AI Context)</th>
+          <th>Trạng thái</th>
+          <th class="text-right">Thao tác</th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-gray-50">
-        <tr *ngFor="let res of restaurants" class="table-row">
-          <td class="table-td">
-            <div class="flex items-center gap-4">
-              <img [src]="res.imageUrl" class="w-12 h-12 rounded-xl object-cover shadow-sm">
-              <span class="font-bold text-gray-900">{{ res.name }}</span>
+      <tbody>
+        <tr *ngFor="let res of restaurants">
+          <td>
+            <div class="res-info-cell">
+              <img [src]="res.imageUrl" class="res-img-mini">
+              <div>
+                <span class="res-name-main">{{ res.name }}</span>
+                <span class="res-name-sub">{{ res.openingHours }}</span>
+              </div>
             </div>
           </td>
-          <td class="table-td text-sm text-gray-500">{{ res.address }}</td>
-          <td class="table-td text-right">
-            <div class="action-btns">
-              <button (click)="onEdit(res)" class="edit-btn">✏️ Sửa</button>
-              <button (click)="onDelete(res.id)" class="delete-btn">🗑️ Xóa</button>
+          <td>
+            <div class="text-sm font-bold text-accent-dark">{{ res.address }}</div>
+          </td>
+          <td>
+            <div class="text-[10px] font-black text-primary-600 uppercase">
+                LAT: {{ res.latitude }} | LNG: {{ res.longitude }}
+            </div>
+          </td>
+          <td>
+            <span class="status-pill" [ngClass]="res.isActive ? 'status-active' : 'status-inactive'">
+              <span class="w-1.5 h-1.5 rounded-full" [ngClass]="res.isActive ? 'bg-green-500' : 'bg-red-500'"></span>
+              {{ res.isActive ? 'Đang hoạt động' : 'Tạm dừng' }}
+            </span>
+          </td>
+          <td>
+            <div class="action-btns justify-end">
+              <button (click)="openMenuModal(res)" class="btn-icon-menu bg-blue-100 text-blue-600 hover:bg-blue-200 px-3 py-1 rounded-lg text-sm font-bold mr-2">
+                <i class="ri-restaurant-fill"></i> Menu
+              </button>
+              <button (click)="editRestaurant(res)" class="btn-icon-edit">
+                <i class="ri-pencil-fill"></i>
+              </button>
+              <button (click)="deleteRestaurant(res.id)" class="btn-icon-delete">
+                <i class="ri-delete-bin-fill"></i>
+              </button>
             </div>
           </td>
         </tr>
       </tbody>
     </table>
-    
-    <div *ngIf="isLoading" class="loading-state">
-        <div class="animate-spin inline-block w-8 h-8 border-4 border-orange-600 border-t-transparent rounded-full mb-2"></div>
-        <p class="text-sm text-gray-400 font-bold">Đang tải dữ liệu...</p>
+  </div>
+
+  <!-- Premium Modal for Add/Edit -->
+  <div *ngIf="showModal" class="premium-modal-overlay">
+    <div class="premium-modal">
+      <header class="modal-header">
+        <h3 class="text-2xl font-black">{{ isEditMode ? 'Cập nhật Nhà hàng' : 'Thêm Nhà hàng mới' }}</h3>
+        <button (click)="closeModal()" class="text-text-muted hover:text-accent-dark transition-colors">
+          <i class="ri-close-line text-3xl"></i>
+        </button>
+      </header>
+      
+      <div class="modal-body">
+        <div class="form-grid">
+          <div>
+            <label class="label-text">Tên nhà hàng</label>
+            <input type="text" [(ngModel)]="currentRestaurant.name" class="input-field" placeholder="Ví dụ: Phở Thìn">
+          </div>
+          <div>
+            <label class="label-text">Giờ mở cửa</label>
+            <input type="text" [(ngModel)]="currentRestaurant.openingHours" class="input-field" placeholder="06:00 - 22:00">
+          </div>
+        </div>
+        
+        <div>
+          <label class="label-text">Địa chỉ</label>
+          <input type="text" [(ngModel)]="currentRestaurant.address" class="input-field" placeholder="Số 10, Trần Đại Nghĩa...">
+        </div>
+
+        <div class="form-grid">
+            <div>
+              <label class="label-text">Vĩ độ (Latitude)</label>
+              <input type="number" [(ngModel)]="currentRestaurant.latitude" class="input-field">
+            </div>
+            <div>
+              <label class="label-text">Kinh độ (Longitude)</label>
+              <input type="number" [(ngModel)]="currentRestaurant.longitude" class="input-field">
+            </div>
+        </div>
+
+        <div>
+            <label class="label-text">Link ảnh nhà hàng</label>
+            <input type="text" [(ngModel)]="currentRestaurant.imageUrl" class="input-field">
+        </div>
+      </div>
+
+      <footer class="modal-footer">
+        <button (click)="closeModal()" class="btn-secondary bg-gray-200 text-gray-700 hover:bg-gray-300">Hủy</button>
+        <button (click)="saveRestaurant()" class="btn-primary px-12">
+            {{ isEditMode ? 'Lưu thay đổi' : 'Xác nhận thêm' }}
+        </button>
+      </footer>
     </div>
-    
-    <div *ngIf="!isLoading && restaurants.length === 0" class="p-20 text-center opacity-40 italic">
-        <p>Danh sách nhà hàng trống.</p>
+  </div>
+
+  <!-- Premium Modal for Menu Management -->
+  <div *ngIf="showMenuModal" class="premium-modal-overlay">
+    <div class="premium-modal" style="max-width: 800px;">
+      <header class="modal-header">
+        <h3 class="text-2xl font-black">Quản lý Thực Đơn</h3>
+        <button (click)="closeMenuModal()" class="text-text-muted hover:text-accent-dark transition-colors">
+          <i class="ri-close-line text-3xl"></i>
+        </button>
+      </header>
+      
+      <div class="modal-body flex gap-6">
+        <!-- List Menu -->
+        <div class="flex-1 bg-gray-50 p-4 rounded-xl max-h-96 overflow-y-auto">
+          <h4 class="font-bold text-lg mb-4 border-b pb-2">Danh sách món ăn</h4>
+          <div *ngIf="currentMenu.length === 0" class="text-center text-gray-500 py-4">Chưa có món ăn nào.</div>
+          <div *ngFor="let item of currentMenu" class="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm mb-3">
+            <img [src]="item.imageUrl || 'https://via.placeholder.com/50'" class="w-12 h-12 rounded-md object-cover">
+            <div class="flex-1">
+              <div class="font-bold text-sm">{{ item.name }}</div>
+              <div class="text-xs text-gray-500">{{ item.price | currency:'USD' }} • {{ item.rating }} <i class="ri-star-fill text-primary"></i></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Add Menu Form -->
+        <div class="flex-1">
+          <h4 class="font-bold text-lg mb-4 border-b pb-2">Thêm món ăn mới</h4>
+          <div class="space-y-3">
+            <div>
+              <label class="label-text">Tên món ăn</label>
+              <input type="text" [(ngModel)]="newFoodItem.name" class="input-field" placeholder="Ví dụ: Burger Phô Mai">
+            </div>
+            <div>
+              <label class="label-text">Mô tả món ăn</label>
+              <textarea [(ngModel)]="newFoodItem.description" class="input-field h-20" placeholder="Mô tả chi tiết hương vị..."></textarea>
+            </div>
+            <div class="flex gap-4">
+              <div class="flex-1">
+                <label class="label-text">Giá ($)</label>
+                <input type="number" [(ngModel)]="newFoodItem.price" class="input-field">
+              </div>
+              <div class="w-24">
+                <label class="label-text">Đánh giá sao</label>
+                <input type="number" step="0.1" min="1" max="5" [(ngModel)]="newFoodItem.rating" class="input-field text-center">
+              </div>
+            </div>
+            <div>
+              <label class="label-text">Link hình ảnh (Image URL)</label>
+              <input type="text" [(ngModel)]="newFoodItem.imageUrl" class="input-field" placeholder="https://...">
+            </div>
+            <button (click)="addFoodItem()" class="btn-primary w-full mt-2">
+              <i class="ri-add-line"></i> Thêm món này
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
-

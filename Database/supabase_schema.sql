@@ -1,96 +1,116 @@
+-- ============================================================
 -- SQL Schema for M-CARS-Food (Supabase / PostgreSQL)
--- To be executed in Supabase SQL Editor
+-- Generated to MATCH EF Core InitialCreate Migration exactly
+-- Table names use PascalCase (EF Core default convention)
+-- ============================================================
 
--- 1. Create Categories Table
-CREATE TABLE public.categories (
-    id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    description TEXT,
-    created_date TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_date TIMESTAMP WITH TIME ZONE
+-- 1. Categories
+CREATE TABLE IF NOT EXISTS public."Categories" (
+    "Id"          SERIAL PRIMARY KEY,
+    "Name"        TEXT NOT NULL,
+    "Description" TEXT NOT NULL,
+    "CreatedDate" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc', now()),
+    "UpdatedDate" TIMESTAMP WITH TIME ZONE
 );
 
--- 2. Create Restaurants (Vendors) Table
-CREATE TABLE public.restaurants (
-    id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    description TEXT,
-    address TEXT,
-    image_url TEXT,
-    latitude DOUBLE PRECISION NOT NULL,
-    longitude DOUBLE PRECISION NOT NULL,
-    opening_hours TEXT,
-    is_active BOOLEAN DEFAULT true,
-    created_date TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_date TIMESTAMP WITH TIME ZONE
+-- 2. Restaurants
+CREATE TABLE IF NOT EXISTS public."Restaurants" (
+    "Id"           SERIAL PRIMARY KEY,
+    "Name"         TEXT NOT NULL,
+    "Description"  TEXT NOT NULL,
+    "Address"      TEXT NOT NULL,
+    "ImageUrl"     TEXT NOT NULL,
+    "Latitude"     DOUBLE PRECISION NOT NULL,
+    "Longitude"    DOUBLE PRECISION NOT NULL,
+    "OpeningHours" TEXT NOT NULL,
+    "IsActive"     BOOLEAN NOT NULL DEFAULT true,
+    "CreatedDate"  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc', now()),
+    "UpdatedDate"  TIMESTAMP WITH TIME ZONE
 );
 
--- 3. Create Food Items Table
-CREATE TABLE public.food_items (
-    id SERIAL PRIMARY KEY,
-    restaurant_id INT REFERENCES public.restaurants(id) ON DELETE CASCADE,
-    category_id INT REFERENCES public.categories(id) ON DELETE SET NULL,
-    name TEXT NOT NULL,
-    description TEXT,
-    price DECIMAL(18, 2) NOT NULL,
-    image_url TEXT,
-    is_available BOOLEAN DEFAULT true,
-    created_date TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_date TIMESTAMP WITH TIME ZONE
+-- 3. Users (self-managed auth, NOT Supabase Auth)
+CREATE TABLE IF NOT EXISTS public."Users" (
+    "Id"            SERIAL PRIMARY KEY,
+    "Email"         TEXT NOT NULL,
+    "PasswordHash"  TEXT NOT NULL,
+    "FullName"      TEXT NOT NULL,
+    "PhoneNumber"   TEXT NOT NULL,
+    "Address"       TEXT NOT NULL,
+    "LastLatitude"  DOUBLE PRECISION,
+    "LastLongitude" DOUBLE PRECISION,
+    "CreatedDate"   TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc', now()),
+    "UpdatedDate"   TIMESTAMP WITH TIME ZONE
 );
 
--- 4. Create Users (Profiles) Table
--- This matches Supabase Auth users but stores extra info in public schema
-CREATE TABLE public.profiles (
-    id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
-    full_name TEXT,
-    phone_number TEXT,
-    address TEXT,
-    last_latitude DOUBLE PRECISION,
-    last_longitude DOUBLE PRECISION,
-    created_date TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_date TIMESTAMP WITH TIME ZONE
+-- 4. Food Items
+CREATE TABLE IF NOT EXISTS public."FoodItems" (
+    "Id"                    SERIAL PRIMARY KEY,
+    "Name"                  TEXT NOT NULL,
+    "Description"           TEXT NOT NULL,
+    "Price"                 DECIMAL(18,2) NOT NULL,
+    "ImageUrl"              TEXT NOT NULL,
+    "IsAvailable"           BOOLEAN NOT NULL DEFAULT true,
+    "CategoryId"            INT NOT NULL REFERENCES public."Categories"("Id") ON DELETE CASCADE,
+    "RestaurantId"          INT NOT NULL REFERENCES public."Restaurants"("Id") ON DELETE CASCADE,
+    "VisualFeatureVector"   TEXT,   -- AI: DenseNet201 image embedding
+    "TextualFeatureVector"  TEXT,   -- AI: BERT/RoBERTa text embedding
+    "CreatedDate"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc', now()),
+    "UpdatedDate"           TIMESTAMP WITH TIME ZONE
 );
 
--- 5. Create Orders Table
-CREATE TABLE public.orders (
-    id SERIAL PRIMARY KEY,
-    user_id UUID REFERENCES auth.users ON DELETE CASCADE,
-    order_date TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    total_amount DECIMAL(18, 2) NOT NULL,
-    status TEXT DEFAULT 'Pending' CHECK (status IN ('Pending', 'Completed', 'Cancelled')),
-    delivery_address TEXT,
-    created_date TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_date TIMESTAMP WITH TIME ZONE
+-- 5. Orders
+CREATE TABLE IF NOT EXISTS public."Orders" (
+    "Id"              SERIAL PRIMARY KEY,
+    "UserId"          INT NOT NULL REFERENCES public."Users"("Id") ON DELETE CASCADE,
+    "OrderDate"       TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc', now()),
+    "TotalAmount"     DECIMAL(18,2) NOT NULL,
+    "Status"          TEXT NOT NULL DEFAULT 'Pending',
+    "DeliveryAddress" TEXT NOT NULL,
+    "CreatedDate"     TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc', now()),
+    "UpdatedDate"     TIMESTAMP WITH TIME ZONE,
+    CONSTRAINT "CK_Orders_Status" CHECK ("Status" IN ('Pending', 'Completed', 'Cancelled'))
 );
 
--- 6. Create Order Items Table
-CREATE TABLE public.order_items (
-    id SERIAL PRIMARY KEY,
-    order_id INT REFERENCES public.orders(id) ON DELETE CASCADE,
-    food_item_id INT REFERENCES public.food_items(id),
-    quantity INT NOT NULL,
-    unit_price DECIMAL(18, 2) NOT NULL,
-    created_date TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+-- 6. Order Items
+CREATE TABLE IF NOT EXISTS public."OrderItems" (
+    "Id"          SERIAL PRIMARY KEY,
+    "OrderId"     INT NOT NULL REFERENCES public."Orders"("Id") ON DELETE CASCADE,
+    "FoodItemId"  INT NOT NULL REFERENCES public."FoodItems"("Id") ON DELETE CASCADE,
+    "Quantity"    INT NOT NULL,
+    "UnitPrice"   DECIMAL(18,2) NOT NULL,
+    "CreatedDate" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc', now()),
+    "UpdatedDate" TIMESTAMP WITH TIME ZONE
 );
 
--- 7. Create Tracking Logs Table (AI Behavioral Data)
-CREATE TABLE public.tracking_logs (
-    id BIGSERIAL PRIMARY KEY,
-    user_id UUID REFERENCES auth.users ON DELETE CASCADE,
-    restaurant_id INT REFERENCES public.restaurants(id),
-    action_type TEXT NOT NULL, -- 'Click', 'View', 'AddToCart'
-    latitude DOUBLE PRECISION NOT NULL,
-    longitude DOUBLE PRECISION NOT NULL,
-    device_info TEXT,
-    timestamp TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+-- 7. Tracking Logs (AI Behavioral Data - SCR Theory)
+CREATE TABLE IF NOT EXISTS public."TrackingLogs" (
+    "Id"           SERIAL PRIMARY KEY,
+    "UserId"       INT REFERENCES public."Users"("Id") ON DELETE SET NULL,  -- nullable (guest users)
+    "RestaurantId" INT NOT NULL REFERENCES public."Restaurants"("Id") ON DELETE CASCADE,
+    "SessionId"    TEXT,               -- Groups behavior by session (SCR Theory)
+    "ActionType"   TEXT NOT NULL,      -- 'View', 'AddToCart', 'Click'
+    "Latitude"     DOUBLE PRECISION NOT NULL,
+    "Longitude"    DOUBLE PRECISION NOT NULL,
+    "Timestamp"    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc', now()),
+    "DeviceInfo"   TEXT NOT NULL,
+    "CreatedDate"  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc', now()),
+    "UpdatedDate"  TIMESTAMP WITH TIME ZONE
 );
 
--- Enable RLS (Row Level Security) - Recommended for Supabase
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.tracking_logs ENABLE ROW LEVEL SECURITY;
+-- ============================================================
+-- Indexes (matching EF Core generated indexes)
+-- ============================================================
+CREATE INDEX IF NOT EXISTS "IX_FoodItems_CategoryId"   ON public."FoodItems"("CategoryId");
+CREATE INDEX IF NOT EXISTS "IX_FoodItems_RestaurantId" ON public."FoodItems"("RestaurantId");
+CREATE INDEX IF NOT EXISTS "IX_OrderItems_FoodItemId"  ON public."OrderItems"("FoodItemId");
+CREATE INDEX IF NOT EXISTS "IX_OrderItems_OrderId"     ON public."OrderItems"("OrderId");
+CREATE INDEX IF NOT EXISTS "IX_Orders_UserId"          ON public."Orders"("UserId");
 
--- Simple Policies (Example: users can see their own data)
-CREATE POLICY "Users can view their own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+-- ============================================================
+-- EF Core Migration History Table (required if using MigrateAsync)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public."__EFMigrationsHistory" (
+    "MigrationId"    VARCHAR(150) NOT NULL,
+    "ProductVersion" VARCHAR(32)  NOT NULL,
+    CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+);

@@ -11,6 +11,18 @@ export interface Restaurant {
   openingHours: string;
   latitude: number;
   longitude: number;
+  isActive?: boolean;
+}
+
+
+export interface FoodItem {
+  id?: number;
+  name: string;
+  description: string;
+  price: number;
+  imageUrl: string;
+  rating: number;
+  restaurantId?: number;
 }
 
 @Injectable({
@@ -39,5 +51,13 @@ export class RestaurantService {
 
   delete(id: number): Observable<any> {
     return this.http.delete(`${this.apiUrl}/${id}`);
+  }
+
+  getMenu(restaurantId: number): Observable<FoodItem[]> {
+    return this.http.get<FoodItem[]>(`${this.apiUrl}/${restaurantId}/menu`);
+  }
+
+  addMenuItem(restaurantId: number, item: FoodItem): Observable<FoodItem> {
+    return this.http.post<FoodItem>(`${this.apiUrl}/${restaurantId}/menu`, item);
   }
 }

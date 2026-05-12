@@ -25,16 +25,26 @@ export class AiRecommendationComponent implements OnInit {
     this.isLoading = true;
     this.error = null;
     
-    // Giả lập lấy Context hiện tại (User: 1, Tọa độ Lat: 21.0, Lng: 105.8)
-    this.aiService.getRecommendations(1, 21.0285, 105.8542).subscribe({
+    // Ưu tiên lấy gợi ý dựa trên hành vi (Content-Based)
+    this.aiService.getBehaviorRecommendations(1).subscribe({
       next: (data) => {
-        this.recommendations = data;
+        this.recommendations = data.restaurants;
         this.isLoading = false;
       },
       error: (err) => {
-        this.error = 'Không thể kết nối đến hệ thống AI (Mô hình SCR chưa sẵn sàng).';
-        this.isLoading = false;
+        // Fallback sang gợi ý theo context nếu có lỗi
+        this.aiService.getRecommendations(1, 21.0285, 105.8542).subscribe({
+          next: (data) => {
+            this.recommendations = data;
+            this.isLoading = false;
+          },
+          error: (fallbackErr) => {
+            this.error = 'Không thể kết nối đến hệ thống AI (Mô hình SCR và Content-Based chưa sẵn sàng).';
+            this.isLoading = false;
+          }
+        });
       }
     });
   }
+
 }

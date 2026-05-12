@@ -19,6 +19,23 @@ class ApiService {
     }
   }
 
+  Future<List<Restaurant>> getAIRecommendations(int userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConstants.baseUrl}/recommendations/$userId'),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        List<dynamic> body = data['restaurants'];
+        return body.map((item) => Restaurant.fromJson(item)).toList();
+      }
+      throw Exception('Failed to load recommendations');
+    } catch (e) {
+      // Fallback về danh sách thường nếu có lỗi
+      return getRestaurants();
+    }
+  }
+
   Future<List<Restaurant>> getRecommendedRestaurants(int userId, double lat, double lng) async {
     try {
       final response = await http.get(

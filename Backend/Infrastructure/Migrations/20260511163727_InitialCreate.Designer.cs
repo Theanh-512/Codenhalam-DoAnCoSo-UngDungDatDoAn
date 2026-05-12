@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(FoodAppDbContext))]
-    [Migration("20260413062150_InitialCreate")]
+    [Migration("20260511163727_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -88,8 +88,14 @@ namespace Infrastructure.Migrations
                     b.Property<int>("RestaurantId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("TextualFeatureVector")
+                        .HasColumnType("text");
+
                     b.Property<DateTime?>("UpdatedDate")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("VisualFeatureVector")
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -251,6 +257,9 @@ namespace Infrastructure.Migrations
                     b.Property<int>("RestaurantId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("SessionId")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("timestamp with time zone");
 
@@ -261,6 +270,10 @@ namespace Infrastructure.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("RestaurantId");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("TrackingLogs");
                 });
@@ -357,6 +370,20 @@ namespace Infrastructure.Migrations
                     b.Navigation("FoodItem");
 
                     b.Navigation("Order");
+                });
+
+            modelBuilder.Entity("Domain.Entities.TrackingLog", b =>
+                {
+                    b.HasOne("Domain.Entities.Restaurant", null)
+                        .WithMany()
+                        .HasForeignKey("RestaurantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("Domain.Entities.Category", b =>

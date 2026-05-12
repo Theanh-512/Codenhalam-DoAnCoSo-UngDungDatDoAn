@@ -35,11 +35,18 @@
   </div>
 
   <div *ngIf="!isLoading && !error && recommendations.length > 0" class="recommendations-grid">
-    <app-restaurant-card 
-      *ngFor="let res of recommendations" 
-      [restaurant]="res">
-    </app-restaurant-card>
+    <div *ngFor="let item of recommendations" class="recommendation-item">
+      <app-restaurant-card 
+        [restaurant]="item.restaurant">
+      </app-restaurant-card>
+      <!-- Explainable AI Label -->
+      <div class="ai-explanation-box">
+        <span class="ai-sparkle">✨</span>
+        <p class="ai-explanation-text">{{ item.explanation }}</p>
+      </div>
+    </div>
   </div>
+
   
   <div *ngIf="!isLoading && !error && recommendations.length === 0" class="empty-state">
       <span class="text-8xl mb-6 block">🏜️</span>

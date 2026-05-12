@@ -22,4 +22,10 @@ export class AiService {
   getRecommendations(userId: number, lat: number, lng: number): Observable<any> {
     return this.http.get(`${this.apiUrl}/Restaurants/recommend?userId=${userId}&lat=${lat}&lng=${lng}`);
   }
+
+  // Lấy gợi ý dựa vào hành vi (Content-Based Filtering)
+  getBehaviorRecommendations(userId: number): Observable<any> {
+    return this.http.get(`${this.apiUrl}/Recommendations/${userId}`);
+  }
 }
+

@@ -20,7 +20,9 @@ builder.Services.AddCors(options =>
 builder.Services.AddDbContext<FoodAppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+
 builder.Services.AddScoped<ITrackingService, TrackingService>();
+builder.Services.AddScoped<AICore.RecommendationEngine>();
 builder.Services.AddMemoryCache(); // Đăng ký Memory Cache cho Redis Caching thay thế
 
 builder.Services.AddControllers();

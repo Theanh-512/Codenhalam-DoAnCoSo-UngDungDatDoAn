@@ -1,59 +1,104 @@
 .management-page {
-  @apply max-w-7xl mx-auto;
+  @apply max-w-7xl mx-auto px-6 py-12;
 }
 
 .management-header {
-  @apply flex justify-between items-center mb-10;
+  @apply flex flex-col md:flex-row items-center justify-between mb-12 gap-6;
 }
 
-.form-card {
-  @apply bg-white p-8 rounded-[2.5rem] border border-orange-100 shadow-xl mb-10 animate-in slide-in-from-top duration-500;
-}
-
-.form-label {
-  @apply block text-xs font-bold text-gray-400 uppercase mb-2;
-}
-
-.form-input {
-  @apply w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500;
+.management-title {
+  @apply text-4xl font-black text-accent-dark tracking-tighter;
 }
 
 .table-container {
-  @apply bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden;
+  @apply card p-0 overflow-hidden border-none shadow-premium bg-white;
 }
 
-.data-table {
-  @apply w-full text-left;
+.premium-table {
+  @apply w-full text-left border-collapse;
 }
 
-.table-header {
-  @apply bg-gray-50 border-b border-gray-100;
+.premium-table th {
+  @apply bg-surface-light px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-text-muted border-b border-border/50;
 }
 
-.table-th {
-  @apply px-6 py-5 text-xs font-black text-gray-400 uppercase tracking-widest;
+.premium-table td {
+  @apply px-8 py-6 border-b border-border/30 align-middle;
 }
 
-.table-row {
-  @apply hover:bg-gray-50 transition-colors group;
+.res-info-cell {
+  @apply flex items-center gap-4;
 }
 
-.table-td {
-  @apply px-6 py-5;
+.res-img-mini {
+  @apply w-12 h-12 rounded-xl object-cover shadow-sm border border-border/50;
+}
+
+.res-name-main {
+  @apply font-black text-accent-dark block;
+}
+
+.res-name-sub {
+  @apply text-xs text-text-muted font-medium;
+}
+
+.status-pill {
+  @apply inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider;
+}
+
+.status-active {
+  @apply bg-green-50 text-green-600;
+}
+
+.status-inactive {
+  @apply bg-red-50 text-red-600;
 }
 
 .action-btns {
-  @apply flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity;
+  @apply flex items-center gap-3;
 }
 
-.edit-btn {
-  @apply p-2 text-blue-600 hover:bg-blue-50 rounded-lg;
+.btn-icon-edit {
+  @apply w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all;
 }
 
-.delete-btn {
-  @apply p-2 text-red-600 hover:bg-red-50 rounded-lg;
+.btn-icon-delete {
+  @apply w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all;
 }
 
-.loading-state {
-  @apply p-20 text-center;
+/* Modal / Form Styles */
+.premium-modal-overlay {
+  @apply fixed inset-0 bg-accent-dark/60 backdrop-blur-md z-[100] flex items-center justify-center p-6;
+}
+
+.premium-modal {
+  @apply bg-white rounded-[3rem] w-full max-w-2xl overflow-hidden shadow-2xl;
+  animation: modalZoomIn 0.3s ease-out;
+}
+
+.modal-header {
+  @apply p-10 border-b border-border/50 flex justify-between items-center;
+}
+
+.modal-body {
+  @apply p-10 space-y-8;
+}
+
+.modal-footer {
+  @apply p-10 bg-surface-light flex justify-end gap-4;
+}
+
+.form-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 gap-6;
+}
+
+@keyframes modalZoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }

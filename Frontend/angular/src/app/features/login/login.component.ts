@@ -29,7 +29,7 @@ export class LoginComponent {
         if (user.role === 'admin') {
           this.router.navigate(['/admin/dashboard']);
         } else {
-          this.router.navigate(['/ai-recommendation']);
+          this.router.navigate(['/home']);
         }
       },
       error: (err) => {
