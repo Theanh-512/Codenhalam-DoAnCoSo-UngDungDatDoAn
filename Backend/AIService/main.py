@@ -153,7 +153,12 @@ class AIModelManager:
         top_vals, top_inds = torch.topk(probs, 3)
         
         # Fusion weights: [Short, Long, Image]
-        weights = fusion_weights[0].tolist() if fusion_weights is not None else [0.33, 0.33, 0.33]
+        # weights shape: (B, 3, 1) -> squeeze to (B, 3)
+        if fusion_weights is not None:
+            weights = fusion_weights[0].squeeze().tolist()
+        else:
+            weights = [0.33, 0.33, 0.33]
+
         weight_info = {
             "short_term_impact": round(weights[0], 2),
             "long_term_impact":  round(weights[1], 2),
