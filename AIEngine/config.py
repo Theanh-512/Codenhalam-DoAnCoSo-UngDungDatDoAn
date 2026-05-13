@@ -20,11 +20,11 @@ DATA_CONFIG = {
 
 # ─── MODEL ARCHITECTURE CONFIG ────────────────────────────────────────────────
 MODEL_CONFIG = {
-    "item_dim":       128,      # d: Chiều không gian nhúng Item
-    "user_dim":       128,      # d: Chiều không gian nhúng User
-    "time_dim":       64,       # d: Chiều nhúng Time Slot
-    "lstm_hidden":    128,      # Kích thước hidden state LSTM
-    "image_dim":      256,      # Chiều vector đặc trưng ảnh (DenseNet201 → 256)
+    "item_dim":       64,       # d: Chiều không gian nhúng Item (Paper: 64)
+    "user_dim":       64,       # d: Chiều không gian nhúng User (Paper: 64)
+    "time_dim":       32,       # d: Chiều nhúng Time Slot
+    "lstm_hidden":    64,       # Kích thước hidden state LSTM (Paper: 64)
+    "image_dim":      64,       # Chiều vector đặc trưng ảnh (DenseNet201 → 64)
     "num_heads":      2,        # Số đầu Multi-Head Attention (paper baseline)
     "dropout":        0.5,      # Dropout rate (paper baseline)
     "num_lstm_layers":1,        # Số lớp LSTM

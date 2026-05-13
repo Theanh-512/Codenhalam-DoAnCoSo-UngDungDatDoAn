@@ -21,34 +21,55 @@ from .multimodal import ImageFeatureExtractor
 logger = logging.getLogger(__name__)
 
 
+class HierarchicalFusion(nn.Module):
+    """
+    Logic Hierarchical Attention (chú ý phân tầng) để kết hợp:
+    1. Short-term Preference (U_short)
+    2. Long-term Preference (U_long)
+    3. Multimodal Features (e_img)
+    """
+    def __init__(self, dim: int, dropout: float = 0.5):
+        super().__init__()
+        self.W_fusion = nn.Linear(dim, dim)
+        self.v_fusion = nn.Linear(dim, 1, bias=False)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, u_short, u_long, e_img):
+        """
+        Args:
+            u_short: (B, D)
+            u_long:  (B, D)
+            e_img:   (B, D)
+        Returns:
+            fused: (B, D)
+        """
+        # Stack vectors: (B, 3, D)
+        stacked = torch.stack([u_short, u_long, e_img], dim=1)
+        
+        # Attention scores: score = v^T * tanh(W * stacked)
+        scores = self.v_fusion(torch.tanh(self.W_fusion(stacked))).squeeze(-1) # (B, 3)
+        weights = F.softmax(scores, dim=-1).unsqueeze(-1) # (B, 3, 1)
+        
+        # Weighted sum
+        fused = (weights * stacked).sum(dim=1) # (B, D)
+        return self.dropout(fused), weights
+
 class SCRMultimodalRecommender(nn.Module):
     """
-    Mô hình gợi ý đa phương thức SCR.
-
-    Tham số quan trọng:
-        num_users  : Tổng số user (cho User Embedding)
-        num_items  : Tổng số item/món ăn (cho Item Embedding + đầu ra)
-        num_time_slots: 48 khe giờ (24h weekday + 24h weekend)
-        item_dim   : Chiều nhúng item  (d)
-        user_dim   : Chiều nhúng user  (d)
-        time_dim   : Chiều nhúng time slot
-        lstm_hidden: Chiều hidden LSTM = U_long dim
-        image_dim  : Chiều vector ảnh  = e_img dim (DenseNet → 256)
-        num_heads  : Số đầu Multi-Head Attention (paper baseline: 2)
-        dropout    : Dropout rate (paper baseline: 0.5)
+    Mô hình gợi ý đa phương thức SCR với Hierarchical Fusion.
     """
 
     def __init__(self,
                  num_users:      int   = 1000,
                  num_items:      int   = 500,
                  num_time_slots: int   = 48,
-                 item_dim:       int   = 128,
-                 user_dim:       int   = 128,
-                 time_dim:       int   = 64,
-                 lstm_hidden:    int   = 128,
-                 image_dim:      int   = 256,
-                 num_heads:      int   = 2,
-                 dropout:        float = 0.5):
+                 item_dim:       int   = 64,   # Paper baseline: 64
+                 user_dim:       int   = 64,   # Paper baseline: 64
+                 time_dim:       int   = 32,
+                 lstm_hidden:    int   = 64,   # Paper baseline: 64
+                 image_dim:      int   = 64,   # Project to 64
+                 num_heads:      int   = 2,    # Paper baseline: 2
+                 dropout:        float = 0.5): # Paper baseline: 0.5
         super().__init__()
 
         # ── A. Embedding Layers ──────────────────────────────────────────────
@@ -76,31 +97,30 @@ class SCRMultimodalRecommender(nn.Module):
         self.image_module = ImageFeatureExtractor(feature_dim=image_dim)
 
         # ── E. Fusion & Prediction Head ──────────────────────────────────────
-        # Concat: [U_short(item_dim), U_long(lstm_hidden), e_img(image_dim)]
-        concat_dim = item_dim + lstm_hidden + image_dim
+        # Đảm bảo các vector có cùng chiều để dùng Hierarchical Attention
+        # Nếu khác chiều, ta sẽ thêm các lớp Linear để map về chung item_dim (64)
+        self.map_long  = nn.Linear(lstm_hidden, item_dim) if lstm_hidden != item_dim else nn.Identity()
+        self.map_image = nn.Linear(image_dim, item_dim)   if image_dim != item_dim else nn.Identity()
 
-        self.fc = nn.Sequential(
-            nn.Linear(concat_dim, 512),
+        self.hierarchical_fusion = HierarchicalFusion(dim=item_dim, dropout=dropout)
+
+        self.prediction_head = nn.Sequential(
+            nn.Linear(item_dim, 256),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(512, 256),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(256, num_items),   # Dự đoán xác suất cho toàn bộ num_items
+            nn.Linear(256, num_items),
         )
 
         logger.info(
-            f"[SCRMultimodalRecommender] Initialized | "
-            f"num_items={num_items}, item_dim={item_dim}, user_dim={user_dim}, "
-            f"time_dim={time_dim}, lstm_hidden={lstm_hidden}, "
-            f"image_dim={image_dim}, num_heads={num_heads}, dropout={dropout} | "
-            f"concat_dim={concat_dim}"
+            f"[SCRMultimodalRecommender] Hierarchical Fusion Initialized | "
+            f"dim={item_dim}, num_heads={num_heads}, dropout={dropout}"
         )
 
     def forward(self,
                 user_ids:       torch.Tensor,
                 long_item_ids:  torch.Tensor,
                 long_time_ids:  torch.Tensor,
+                delta_ts:       torch.Tensor,
                 history_slots:  torch.Tensor,
                 current_slots:  torch.Tensor,
                 history_coords: torch.Tensor,
@@ -110,20 +130,17 @@ class SCRMultimodalRecommender(nn.Module):
                 padding_mask:   torch.Tensor = None):
         """
         Args:
-            user_ids:       (B,)          — User IDs
-            long_item_ids:  (B, L)        — Item IDs lịch sử dài hạn
-            long_time_ids:  (B, L)        — Time slot IDs lịch sử dài hạn
-            history_slots:  (B, L, 48)    — Binary time-slot vectors lịch sử
-            current_slots:  (B, 48)       — Time-slot vector phiên hiện tại
-            history_coords: (B, L, 2)     — [lat, lon] các phiên lịch sử
-            current_coord:  (B, 2)        — [lat, lon] vị trí user hiện tại
-            short_item_ids: (B, S)        — Item IDs trong phiên S_n (24h)
-            image_tensors:  (B, 3, 224, 224) — Ảnh món ăn hiện tại
-            padding_mask:   (B, S) bool   — True = padding trong phiên ngắn hạn
-
-        Returns:
-            log_probs:   (B, num_items)   — Log-Softmax probabilities
-            attn_weights:(B, S, S)        — Self-attention weights (short-term)
+            user_ids:       (B,)
+            long_item_ids:  (B, L)
+            long_time_ids:  (B, L)
+            delta_ts:       (B, L, 1)     — Time intervals for Time-LSTM
+            history_slots:  (B, L, 48)
+            current_slots:  (B, 48)
+            history_coords: (B, L, 2)
+            current_coord:  (B, 2)
+            short_item_ids: (B, S)
+            image_tensors:  (B, 3, 224, 224)
+            padding_mask:   (B, S)
         """
         # ── A. Embeddings ──────────────────────────────────────────────────
         u_user   = self.user_embedding(user_ids)         # (B, user_dim)
@@ -135,6 +152,7 @@ class SCRMultimodalRecommender(nn.Module):
         u_long, gamma, dist_w = self.long_term(
             e_items=e_long,
             e_times=e_time_l,
+            delta_ts=delta_ts,
             history_slots=history_slots,
             current_slots=current_slots,
             history_coords=history_coords,
@@ -151,19 +169,16 @@ class SCRMultimodalRecommender(nn.Module):
         # ── D. Image Feature e_img ──────────────────────────────────────────
         e_img = self.image_module(image_tensors)         # (B, image_dim)
 
-        # ── E. Fusion → Prediction ──────────────────────────────────────────
-        # Concat [U_short || U_long || e_img]
-        fused  = torch.cat([u_short, u_long, e_img], dim=-1)   # (B, concat_dim)
-        logits = self.fc(fused)                                  # (B, num_items)
+        # ── E. Hierarchical Fusion → Prediction ─────────────────────────────
+        u_long_mapped = self.map_long(u_long)
+        e_img_mapped  = self.map_image(e_img)
+        
+        fused, fusion_weights = self.hierarchical_fusion(u_short, u_long_mapped, e_img_mapped)
+        
+        logits = self.prediction_head(fused)
+        log_probs = F.log_softmax(logits, dim=-1)
 
-        # Log-Softmax → dùng với NLLLoss: L = -Σ g_k
-        log_probs = F.log_softmax(logits, dim=-1)               # (B, num_items)
-
-        logger.debug(
-            f"[SCR.forward] log_probs={log_probs.shape}, "
-            f"u_long={u_long.shape}, u_short={u_short.shape}, e_img={e_img.shape}"
-        )
-        return log_probs, attn_weights
+        return log_probs, attn_weights, fusion_weights
 
 
 # ── Backward-compat wrapper (giữ API của test.py cũ) ────────────────────────

@@ -88,6 +88,24 @@ class SessionDataset(Dataset):
             cs = [[0.0, 0.0]] * (length - len(cs)) + cs
         return np.array(cs[-length:], dtype=np.float32)
 
+    def _pad_deltas(self, inters, length):
+        deltas = []
+        for i in range(len(inters)):
+            if i == 0:
+                deltas.append([0.0])
+            else:
+                try:
+                    t1 = float(inters[i]['timestamp'])
+                    t0 = float(inters[i-1]['timestamp'])
+                    # Khoảng cách tính bằng giờ
+                    dt = max(0.0, (t1 - t0) / 3600.0)
+                    deltas.append([dt])
+                except Exception:
+                    deltas.append([0.0])
+        if len(deltas) < length:
+            deltas = [[0.0]] * (length - len(deltas)) + deltas
+        return np.array(deltas[-length:], dtype=np.float32)
+
     def __getitem__(self, idx):
         uid, target_idx = self.samples[idx]
         history = self.user_history[uid]
@@ -103,11 +121,12 @@ class SessionDataset(Dataset):
         long_time_ids  = torch.tensor(self._pad_ids(long_inter, self.seq_len, 'time_slot'), dtype=torch.long)
         history_slots  = torch.tensor(self._pad_slots(long_inter, self.seq_len), dtype=torch.float32)
         history_coords = torch.tensor(self._pad_coords(long_inter, self.seq_len), dtype=torch.float32)
+        delta_ts       = torch.tensor(self._pad_deltas(long_inter, self.seq_len), dtype=torch.float32)
 
         current_slots  = torch.tensor(
             time_slot_to_binary([target.get('time_slot', 0)], self.num_slots), dtype=torch.float32)
         current_coord  = torch.tensor(
-            [target.get('lat', 0.0), target.get('lon', 0.0)], dtype=torch.float32)
+            [float(target.get('lat', 0.0)), float(target.get('lon', 0.0))], dtype=torch.float32)
 
         short_item_ids = torch.tensor(self._pad_ids(sess_inter, self.session_len, 'item_id'), dtype=torch.long)
 
@@ -118,15 +137,20 @@ class SessionDataset(Dataset):
             image_tensor = torch.randn(3, 224, 224)
         else:
             try:
-                img = Image.open(os.path.join(self.image_dir or '', target.get('image_path', ''))).convert('RGB')
+                img_path = target.get('image_path', '')
+                if self.image_dir:
+                    img_path = os.path.join(self.image_dir, img_path)
+                img = Image.open(img_path).convert('RGB')
                 image_tensor = IMAGE_TRANSFORM(img)
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Error loading image {img_path}: {e}")
                 image_tensor = torch.randn(3, 224, 224)
 
         return {
             'user_id':        torch.tensor(uid, dtype=torch.long),
             'long_item_ids':  long_item_ids,
             'long_time_ids':  long_time_ids,
+            'delta_ts':       delta_ts,
             'history_slots':  history_slots,
             'current_slots':  current_slots,
             'history_coords': history_coords,
@@ -134,7 +158,7 @@ class SessionDataset(Dataset):
             'short_item_ids': short_item_ids,
             'padding_mask':   padding_mask,
             'image_tensor':   image_tensor,
-            'target_item_id': torch.tensor(target['item_id'], dtype=torch.long),
+            'target_item_id': torch.tensor(int(target['item_id']), dtype=torch.long),
         }
 
 

@@ -21,60 +21,67 @@ import torch.nn.functional as F
 logger = logging.getLogger(__name__)
 
 
-class CustomLSTMCell(nn.Module):
+class TimeLSTMCell(nn.Module):
     """
-    LSTMCell hiện thực đúng kiến trúc SCR:
-    Input = concat([e_item, e_time]) → Tách biệt với h_{t-1}
-    để map chính xác W_f1·[e_l, e_t] và W_f2·h_{t-1}.
+    Time-LSTM Cell hiện thực hóa các cổng thời gian (Time Gates):
+    Giúp lọc thói quen ăn uống dựa trên khoảng cách thời gian (delta_t).
+    
+    T1 = σ(W_t1·Δt + b_t1)
+    T2 = σ(W_t2·Δt + b_t2)
+    f_t = σ(W_f·x_t + U_f·h_{t-1} + b_f)
+    i_t = σ(W_i·x_t + U_i·h_{t-1} + b_i)
+    o_t = σ(W_o·x_t + U_o·h_{t-1} + b_o)
+    
+    C_t_tilde = tanh(W_c·x_t + U_c·h_{t-1} + b_c)
+    C_t = f_t * C_{t-1} + i_t * C_t_tilde * T1  <-- T1 điều chỉnh input
+    h_t = o_t * tanh(C_t) * T2                  <-- T2 điều chỉnh output
     """
 
     def __init__(self, input_dim: int, hidden_dim: int):
-        """
-        Args:
-            input_dim:  Kích thước input = item_dim + time_dim
-            hidden_dim: Kích thước hidden state (h_t, c_t)
-        """
         super().__init__()
         self.hidden_dim = hidden_dim
 
-        # W_f1, W_i1, W_o1 → áp dụng lên [e_item, e_time]
-        self.W1_forget = nn.Linear(input_dim, hidden_dim, bias=False)
-        self.W1_input  = nn.Linear(input_dim, hidden_dim, bias=False)
-        self.W1_output = nn.Linear(input_dim, hidden_dim, bias=False)
-        self.W1_cell   = nn.Linear(input_dim, hidden_dim, bias=False)
+        # Các cổng LSTM chuẩn
+        self.W_i = nn.Linear(input_dim, hidden_dim)
+        self.U_i = nn.Linear(hidden_dim, hidden_dim)
+        
+        self.W_f = nn.Linear(input_dim, hidden_dim)
+        self.U_f = nn.Linear(hidden_dim, hidden_dim)
+        
+        self.W_o = nn.Linear(input_dim, hidden_dim)
+        self.U_o = nn.Linear(hidden_dim, hidden_dim)
+        
+        self.W_c = nn.Linear(input_dim, hidden_dim)
+        self.U_c = nn.Linear(hidden_dim, hidden_dim)
 
-        # W_f2, W_i2, W_o2 → áp dụng lên h_{t-1}
-        self.W2_forget = nn.Linear(hidden_dim, hidden_dim, bias=True)
-        self.W2_input  = nn.Linear(hidden_dim, hidden_dim, bias=True)
-        self.W2_output = nn.Linear(hidden_dim, hidden_dim, bias=True)
-        self.W2_cell   = nn.Linear(hidden_dim, hidden_dim, bias=True)
+        # Các cổng thời gian (Time Gates)
+        self.W_t1 = nn.Linear(1, hidden_dim)
+        self.W_t2 = nn.Linear(1, hidden_dim)
 
-    def forward(self, x_t, h_prev, c_prev):
+    def forward(self, x_t, delta_t, h_prev, c_prev):
         """
         Args:
-            x_t:    (batch, input_dim)  — concat([e_item, e_time])
-            h_prev: (batch, hidden_dim) — h_{t-1}
-            c_prev: (batch, hidden_dim) — c_{t-1}
-        Returns:
-            h_t, c_t: (batch, hidden_dim)
+            x_t:     (batch, input_dim)
+            delta_t: (batch, 1) — Khoảng cách thời gian
+            h_prev:  (batch, hidden_dim)
+            c_prev:  (batch, hidden_dim)
         """
-        # f_t = σ(W_f1·x_t + W_f2·h_{t-1} + b_f)
-        f_t = torch.sigmoid(self.W1_forget(x_t) + self.W2_forget(h_prev))
+        # Time Gates
+        T1 = torch.sigmoid(self.W_t1(delta_t))
+        T2 = torch.sigmoid(self.W_t2(delta_t))
 
-        # i_t = σ(W_i1·x_t + W_i2·h_{t-1} + b_i)
-        i_t = torch.sigmoid(self.W1_input(x_t) + self.W2_input(h_prev))
+        # LSTM Gates
+        i_t = torch.sigmoid(self.W_i(x_t) + self.U_i(h_prev))
+        f_t = torch.sigmoid(self.W_f(x_t) + self.U_f(h_prev))
+        o_t = torch.sigmoid(self.W_o(x_t) + self.U_o(h_prev))
+        
+        c_tilde = torch.tanh(self.W_c(x_t) + self.U_c(h_prev))
 
-        # o_t = σ(W_o1·x_t + W_o2·h_{t-1} + b_o)
-        o_t = torch.sigmoid(self.W1_output(x_t) + self.W2_output(h_prev))
-
-        # g_t = tanh(W_g1·x_t + W_g2·h_{t-1} + b_g)  [cell candidate]
-        g_t = torch.tanh(self.W1_cell(x_t) + self.W2_cell(h_prev))
-
-        # c_t = f_t ⊙ c_{t-1} + i_t ⊙ g_t
-        c_t = f_t * c_prev + i_t * g_t
-
-        # h_t = o_t ⊙ tanh(c_t)
-        h_t = o_t * torch.tanh(c_t)
+        # Cell state update với Time Gate T1
+        c_t = f_t * c_prev + i_t * c_tilde * T1
+        
+        # Hidden state update với Time Gate T2
+        h_t = o_t * torch.tanh(c_t) * T2
 
         return h_t, c_t
 
@@ -164,7 +171,7 @@ class LongTermPreference(nn.Module):
         self.hidden_dim = hidden_dim
         input_dim = item_dim + time_dim
 
-        self.lstm_cell     = CustomLSTMCell(input_dim, hidden_dim)
+        self.lstm_cell     = TimeLSTMCell(input_dim, hidden_dim)
         self.time_weighter = JaccardTimeWeighter(num_time_slots, eps)
         self.dist_weighter = DistanceWeighter(eps)
 
@@ -176,6 +183,7 @@ class LongTermPreference(nn.Module):
     def forward(self,
                 e_items:         torch.Tensor,
                 e_times:         torch.Tensor,
+                delta_ts:        torch.Tensor,
                 history_slots:   torch.Tensor,
                 current_slots:   torch.Tensor,
                 history_coords:  torch.Tensor,
@@ -184,6 +192,7 @@ class LongTermPreference(nn.Module):
         Args:
             e_items:        (B, L, item_dim)   — item embeddings chuỗi dài hạn
             e_times:        (B, L, time_dim)   — time embeddings chuỗi dài hạn
+            delta_ts:       (B, L, 1)          — khoảng cách thời gian giữa các bữa ăn
             history_slots:  (B, L, 48)         — binary time-slot vectors
             current_slots:  (B, 48)            — time-slot vector hiện tại
             history_coords: (B, L, 2)          — [lat, lon] các phiên lịch sử
@@ -200,10 +209,11 @@ class LongTermPreference(nn.Module):
 
         hidden_states = []  # Lưu h_t tại mỗi bước
 
-        # ── Bước 1: Chạy qua CustomLSTMCell từng bước t ──
+        # ── Bước 1: Chạy qua TimeLSTMCell từng bước t ──
         for t in range(L):
             x_t = torch.cat([e_items[:, t, :], e_times[:, t, :]], dim=-1)  # (B, item+time)
-            h, c = self.lstm_cell(x_t, h, c)
+            dt  = delta_ts[:, t, :]                                        # (B, 1)
+            h, c = self.lstm_cell(x_t, dt, h, c)
             hidden_states.append(h.unsqueeze(1))  # (B, 1, H)
 
         H = torch.cat(hidden_states, dim=1)  # (B, L, H)

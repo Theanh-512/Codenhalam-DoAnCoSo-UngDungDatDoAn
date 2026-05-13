@@ -19,7 +19,7 @@ class ImageFeatureExtractor(nn.Module):
             param.requires_grad = False
             
         # Add a fully connected layer to map to the desired feature dimension
-        # DenseNet201 outputs 1920 channels
+        # DenseNet201 outputs 1920 channels. Project to 64 as per SCR paper.
         self.classifier = nn.Sequential(
             nn.Linear(1920, 512),
             nn.ReLU(),

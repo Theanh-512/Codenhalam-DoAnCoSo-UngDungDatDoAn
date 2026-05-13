@@ -37,3 +37,18 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Python
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# AI Models
+checkpoints/
+*.pth
+*.h5
+*.onnx
+
+# Data
+AIEngine/data/raw_images/

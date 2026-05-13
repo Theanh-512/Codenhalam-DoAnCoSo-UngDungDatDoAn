@@ -60,6 +60,7 @@ class ContextRequest(BaseModel):
 class RecommendationResponse(BaseModel):
     restaurant_ids: List[int]
     confidence_scores: List[float]
+    analysis: Optional[dict] = None
     reason: str
 
 # ─── Model Management ──────────────────────────────────────────────────────
@@ -102,7 +103,7 @@ class AIModelManager:
     @torch.no_grad()
     def predict(self, user_id, lat, lng, time_str, dow):
         if self.model is None:
-            return [random.randint(1, 10) for _ in range(3)], [0.9, 0.8, 0.7]
+            return [random.randint(1, 10) for _ in range(3)], [0.9, 0.8, 0.7], {}
 
         # 1. Preprocess context
         hour = int(time_str.split(":")[0])
@@ -111,21 +112,34 @@ class AIModelManager:
         
         # 2. Tạo dummy history (Thực tế sẽ lấy từ Database/Redis)
         B = 1
-        long_item_ids  = torch.randint(0, DATA_CONFIG["num_items"], (B, 20)).to(self.device)
-        long_time_ids  = torch.randint(0, 48, (B, 20)).to(self.device)
-        history_slots  = torch.randint(0, 2, (B, 20, 48)).float().to(self.device)
-        history_coords = torch.randn(B, 20, 2).to(self.device)
-        short_item_ids = torch.randint(0, DATA_CONFIG["num_items"], (B, 5)).to(self.device)
+        L_long = DATA_CONFIG["seq_len"] if "seq_len" in DATA_CONFIG else 20
+        L_short = DATA_CONFIG["session_len"] if "session_len" in DATA_CONFIG else 5
+
+        long_item_ids  = torch.randint(0, DATA_CONFIG["num_items"], (B, L_long)).to(self.device)
+        long_time_ids  = torch.randint(0, 48, (B, L_long)).to(self.device)
         
-        current_slots  = torch.tensor(time_slot_to_binary([slot_id]), dtype=torch.float32).to(self.device)
-        current_coord  = torch.tensor([lat, lng], dtype=torch.float32).to(self.device)
-        image_dummy    = torch.randn(B, 3, 224, 224).to(self.device)
+        # delta_ts: khoảng cách thời gian giữa các lần ăn (giả lập 1-24h)
+        delta_ts       = torch.rand(B, L_long, 1).to(self.device) * 24.0
+        
+        history_slots  = torch.randint(0, 2, (B, L_long, 48)).float().to(self.device)
+        history_coords = torch.randn(B, L_long, 2).to(self.device)
+        short_item_ids = torch.randint(0, DATA_CONFIG["num_items"], (B, L_short)).to(self.device)
+        
+        # current_slots: (B, 48) — binary vector cho time slot hiện tại
+        slot_binary = time_slot_to_binary([slot_id])   # list 48 phần tử
+        current_slots = torch.tensor(slot_binary, dtype=torch.float32).unsqueeze(0).to(self.device)  # (1, 48)
+        
+        # current_coord: (B, 2)
+        current_coord = torch.tensor([[lat, lng]], dtype=torch.float32).to(self.device)  # (1, 2)
+        image_dummy   = torch.randn(B, 3, 224, 224).to(self.device)
 
         # 3. Forward Pass
-        log_probs, _ = self.model(
+        # Model signature mới: (..., delta_ts, ...) -> log_probs, attn_weights, fusion_weights
+        log_probs, _, fusion_weights = self.model(
             user_ids       = torch.tensor([user_id]).to(self.device),
             long_item_ids  = long_item_ids,
             long_time_ids  = long_time_ids,
+            delta_ts       = delta_ts,
             history_slots  = history_slots,
             current_slots  = current_slots,
             history_coords = history_coords,
@@ -138,7 +152,15 @@ class AIModelManager:
         probs = torch.exp(log_probs)
         top_vals, top_inds = torch.topk(probs, 3)
         
-        return top_inds[0].tolist(), top_vals[0].tolist()
+        # Fusion weights: [Short, Long, Image]
+        weights = fusion_weights[0].tolist() if fusion_weights is not None else [0.33, 0.33, 0.33]
+        weight_info = {
+            "short_term_impact": round(weights[0], 2),
+            "long_term_impact":  round(weights[1], 2),
+            "visual_impact":     round(weights[2], 2)
+        }
+        
+        return top_inds[0].tolist(), top_vals[0].tolist(), weight_info
 
 # Khởi tạo singleton manager
 ai_manager = AIModelManager()
@@ -188,24 +210,25 @@ async def recognize_food(file: UploadFile = File(...)):
 @app.post("/api/ai/recommend-poi", response_model=RecommendationResponse)
 def recommend_poi(request: ContextRequest):
     """
-    Gợi ý quán ăn sử dụng mô hình SCR-Multimodal.
+    Gợi ý quán ăn sử dụng mô hình SCR-Multimodal với Hierarchical Attention.
     """
-    ids, scores = ai_manager.predict(
+    ids, scores, weight_info = ai_manager.predict(
         request.user_id, request.lat, request.lng, request.time, request.day_of_week
     )
     
-    # Tạo lý do gợi ý dựa trên thời gian
-    hour = int(request.time.split(":")[0])
-    if 6 <= hour <= 10:
-        reason = "AI gợi ý các món nước nóng hổi cho bữa sáng của bạn."
-    elif 11 <= hour <= 14:
-        reason = "Dựa trên thói quen ăn trưa và vị trí hiện tại của bạn."
+    # Tạo lý do gợi ý dựa trên trọng số Attention
+    # weights: [Short, Long, Image]
+    if weight_info.get("visual_impact", 0) > 0.4:
+        reason = "AI nhận thấy bạn đang bị thu hút bởi hình ảnh các món ăn tương tự quán này."
+    elif weight_info.get("short_term_impact", 0) > 0.4:
+        reason = "Gợi ý dựa trên những gì bạn vừa tìm kiếm trong 15 phút qua."
     else:
-        reason = "AI kết hợp sở thích dài hạn và các xu hướng gần đây để gợi ý."
+        reason = "Dựa trên thói quen ăn uống ổn định của bạn vào khung giờ này."
 
     return {
         "restaurant_ids": ids,
         "confidence_scores": scores,
+        "analysis": weight_info,
         "reason": reason
     }
 

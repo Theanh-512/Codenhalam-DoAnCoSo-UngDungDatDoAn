@@ -64,10 +64,11 @@ class SCRTrainer:
 
     def _forward_batch(self, batch: dict):
         b = self._batch_to_device(batch)
-        log_probs, attn = self.model(
+        log_probs, attn, fusion = self.model(
             user_ids       = b['user_id'],
             long_item_ids  = b['long_item_ids'],
             long_time_ids  = b['long_time_ids'],
+            delta_ts       = b.get('delta_ts', None),
             history_slots  = b['history_slots'],
             current_slots  = b['current_slots'],
             history_coords = b['history_coords'],

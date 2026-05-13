@@ -23,3 +23,14 @@ Do sử dụng `num_heads=4`, mô hình có khả năng học các góc độ gi
 - **Head 3**: Tập trung vào hành vi (VD: Các món hay được Mua kèm).
 
 Nhờ vậy, vector $U_{short}$ thu được là một biểu diễn toàn diện, chứa đựng đầy đủ lý do "tại sao" người dùng lại muốn mua món ăn đó ngay lúc này.
+
+## 4. Khối Dài hạn: Time-LSTM với Cổng thời gian
+Module **Long-term Preference ($U_{long}$)** sử dụng biến thể **Time-LSTM** để xử lý các chuỗi tương tác dài hạn của người dùng.
+- **Cổng thời gian ($T_1, T_2$)**: Khác với LSTM thông thường, Time-LSTM có các cổng phụ thuộc vào khoảng cách thời gian giữa các lần ăn ($\Delta t$). Điều này giúp mô hình "quên" đi những thói quen cũ đã lỗi thời và tập trung vào các thói quen có tính chu kỳ (ví dụ: thói quen ăn phở vào sáng Chủ Nhật).
+- **Trọng số Không gian - Thời gian**: Kết hợp khoảng cách địa lý (Distance weight) và sự tương đồng về khung giờ (Jaccard Time similarity) để tạo ra vector sở thích dài hạn chính xác nhất.
+
+## 5. Hierarchical Attention Fusion (Fusion đa phương thức)
+Sau khi có $U_{short}$, $U_{long}$ và đặc trưng hình ảnh $e_{img}$ từ DenseNet201, chúng ta không chỉ cộng hay nối chúng lại. Thay vào đó, chúng ta sử dụng **Hierarchical Attention**:
+- **Tính toán trọng số Fusion**: Mô hình tự học xem tại thời điểm hiện tại, yếu tố nào quan trọng nhất. 
+- **Ví dụ**: Nếu người dùng đang đi du lịch ở một thành phố mới, trọng số của $U_{short}$ (ý định tức thời) và $e_{img}$ (nhìn ảnh thấy ngon) sẽ tăng cao, trong khi $U_{long}$ (thói quen tại nhà) sẽ giảm xuống.
+- **Kết quả**: Hệ thống có thể giải thích chi tiết: *"Gợi ý này dựa 60% vào sở thích tức thời của bạn và 30% vào hình ảnh món ăn."*
