@@ -82,6 +82,9 @@ namespace Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<double>("Rating")
+                        .HasColumnType("double precision");
+
                     b.Property<int>("RestaurantId")
                         .HasColumnType("integer");
 
