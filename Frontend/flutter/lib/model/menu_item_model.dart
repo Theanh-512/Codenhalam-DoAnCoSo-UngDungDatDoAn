@@ -54,7 +54,7 @@ class MenuItemModel {
 
   static Future<List<MenuItemModel>> fetchByRestaurant(String restaurantId) async {
     try {
-      final url = Uri.parse('${Globs.itemsUrl}?restaurantId=$restaurantId');
+      final url = Uri.parse('${Globs.baseUrl}/api/Restaurants/$restaurantId/menu');
       final res = await http.get(url);
       if (res.statusCode == 200) {
         final List data = jsonDecode(res.body);
@@ -83,8 +83,9 @@ class MenuItemModel {
       );
       final res = await http.get(url);
       if (res.statusCode == 200) {
-        final List data = jsonDecode(res.body);
-        return data.map((e) => MenuItemModel.fromJson(e)).toList();
+        final Map<String, dynamic> data = jsonDecode(res.body);
+        final List foodList = data['foodItems'] ?? [];
+        return foodList.map((e) => MenuItemModel.fromJson(e)).toList();
       }
     } catch (_) {}
     return [];

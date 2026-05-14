@@ -7,8 +7,8 @@ Grid search sẽ override các giá trị này khi thử nghiệm.
 
 # ─── DATA CONFIG ──────────────────────────────────────────────────────────────
 DATA_CONFIG = {
-    "num_users":      1000,     # Tổng số User trong hệ thống
-    "num_items":      500,      # Tổng số món ăn / nhà hàng
+    "num_users":      2000,     # Tăng để bao phủ User thật + ảo
+    "num_items":      20000,    # Tăng để bao phủ 17k+ FoodItems
     "num_time_slots": 48,       # 24h weekday + 24h weekend
     "seq_len":        50,       # Độ dài chuỗi lịch sử dài hạn
     "session_len":    10,       # Số tương tác tối đa trong 1 phiên 24h

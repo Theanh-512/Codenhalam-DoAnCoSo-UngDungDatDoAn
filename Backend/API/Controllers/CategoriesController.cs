@@ -20,9 +20,18 @@ namespace API.Controllers
 
         // GET: api/Categories
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Category>>> GetCategories()
+        public async Task<ActionResult<IEnumerable<object>>> GetCategories()
         {
-            return await _context.Categories.ToListAsync();
+            var categories = await _context.Categories
+                .Select(c => new {
+                    id = c.Id,
+                    name = c.Name,
+                    description = c.Description,
+                    imageUrl = c.ImageUrl,
+                    items_count = c.FoodItems.Count()
+                })
+                .ToListAsync();
+            return Ok(categories);
         }
 
         // GET: api/Categories/{id}

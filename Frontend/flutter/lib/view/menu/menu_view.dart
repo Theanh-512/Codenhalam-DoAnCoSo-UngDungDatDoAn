@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_food_app/common/cart_nav.dart';
 import 'package:flutter_food_app/common/color_extension.dart';
+import 'package:flutter_food_app/view/menu/category_restaurants_view.dart';
 import 'package:flutter_food_app/view/menu/menu_items_view.dart';
 import 'package:flutter_food_app/view/search/search_view.dart';
 import 'package:flutter_food_app/model/category_model.dart';
@@ -128,7 +129,7 @@ class _MenuViewState extends State<MenuView> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => MenuItemsView(mObj: {"name": data.name}),
+                              builder: (context) => CategoryRestaurantsView(categoryName: data.name),
                             ),
                           );
                         },

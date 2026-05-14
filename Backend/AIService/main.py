@@ -9,6 +9,8 @@ import os
 import sys
 import logging
 import random
+import math
+import json
 from typing import List, Optional
 
 import torch
@@ -19,9 +21,7 @@ from pydantic import BaseModel
 from PIL import Image
 import io
 
-# ─── Setup Path để import từ AIEngine ──────────────────────────────────────
-# Giả sử cấu trúc: /ProjectRoot/Backend/AIService/main.py
-# AIEngine nằm tại: /ProjectRoot/AIEngine/
+# ─── Setup Path ───────────────────────────────────────────────────────────
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "..", ".."))
 if PROJECT_ROOT not in sys.path:
@@ -33,10 +33,8 @@ try:
     from AIEngine.config import MODEL_CONFIG, DATA_CONFIG
 except ImportError as e:
     print(f"❌ Lỗi Import từ AIEngine: {e}")
-    # Fallback giả lập nếu chạy standalone không đúng path
     SCRMultimodalRecommender = None
 
-# ─── Logging ───────────────────────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -49,7 +47,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ─── Schemas ───────────────────────────────────────────────────────────────
+# ─── Schemas ──────────────────────────────────────────────────────────────
 class ContextRequest(BaseModel):
     user_id: int
     lat: float
@@ -63,20 +61,37 @@ class RecommendationResponse(BaseModel):
     analysis: Optional[dict] = None
     reason: str
 
+# ─── Utils ────────────────────────────────────────────────────────────────
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371 
+    dLat = math.radians(lat2 - lat1)
+    dLon = math.radians(lon2 - lon1)
+    a = math.sin(dLat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dLon/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    return R * c
+
 # ─── Model Management ──────────────────────────────────────────────────────
 class AIModelManager:
     def __init__(self):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = None
+        self.mapping = None
+        self._load_mapping()
         self._load_model()
+
+    def _load_mapping(self):
+        mapping_path = os.path.join(PROJECT_ROOT, "AIEngine", "data", "item_mapping.json")
+        if os.path.exists(mapping_path):
+            with open(mapping_path, 'r') as f:
+                self.mapping = json.load(f)
+            logger.info(f"✅ Loaded mapping for {len(self.mapping['idx_to_id'])} items.")
 
     def _load_model(self):
         if SCRMultimodalRecommender is None:
-            logger.warning("SCR Model class not found. Running in Mock mode.")
+            logger.warning("SCR Model class not found.")
             return
 
         try:
-            # Khởi tạo mô hình với config từ AIEngine
             self.model = SCRMultimodalRecommender(
                 num_users      = DATA_CONFIG["num_users"],
                 num_items      = DATA_CONFIG["num_items"],
@@ -87,13 +102,10 @@ class AIModelManager:
                 image_dim      = MODEL_CONFIG["image_dim"]
             )
             
-            # Load weights nếu có file, nếu không dùng random (cho demo)
             weight_path = os.path.join(PROJECT_ROOT, "AIEngine", "checkpoints", "best_scr_model.pt")
             if os.path.exists(weight_path):
                 self.model.load_state_dict(torch.load(weight_path, map_location=self.device))
                 logger.info(f"✅ Loaded weights from {weight_path}")
-            else:
-                logger.info("⚠️ No checkpoint found. Using initialized random weights for demo.")
             
             self.model.to(self.device)
             self.model.eval()
@@ -102,41 +114,31 @@ class AIModelManager:
 
     @torch.no_grad()
     def predict(self, user_id, lat, lng, time_str, dow):
-        if self.model is None:
-            return [random.randint(1, 10) for _ in range(3)], [0.9, 0.8, 0.7], {}
+        if self.model is None or self.mapping is None:
+            return [random.randint(1, 1500) for _ in range(3)], [0.5]*3, {}
 
-        # 1. Preprocess context
         hour = int(time_str.split(":")[0])
         is_weekend = dow >= 5
         slot_id = encode_time_slot(hour, is_weekend)
         
-        # 2. Tạo dummy history (Thực tế sẽ lấy từ Database/Redis)
         B = 1
-        L_long = DATA_CONFIG["seq_len"] if "seq_len" in DATA_CONFIG else 20
-        L_short = DATA_CONFIG["session_len"] if "session_len" in DATA_CONFIG else 5
+        L_long = DATA_CONFIG["seq_len"]
+        L_short = DATA_CONFIG["session_len"]
 
-        long_item_ids  = torch.randint(0, DATA_CONFIG["num_items"], (B, L_long)).to(self.device)
+        long_item_ids  = torch.randint(0, len(self.mapping['idx_to_id']), (B, L_long)).to(self.device)
         long_time_ids  = torch.randint(0, 48, (B, L_long)).to(self.device)
-        
-        # delta_ts: khoảng cách thời gian giữa các lần ăn (giả lập 1-24h)
         delta_ts       = torch.rand(B, L_long, 1).to(self.device) * 24.0
-        
         history_slots  = torch.randint(0, 2, (B, L_long, 48)).float().to(self.device)
         history_coords = torch.randn(B, L_long, 2).to(self.device)
-        short_item_ids = torch.randint(0, DATA_CONFIG["num_items"], (B, L_short)).to(self.device)
+        short_item_ids = torch.randint(0, len(self.mapping['idx_to_id']), (B, L_short)).to(self.device)
         
-        # current_slots: (B, 48) — binary vector cho time slot hiện tại
-        slot_binary = time_slot_to_binary([slot_id])   # list 48 phần tử
-        current_slots = torch.tensor(slot_binary, dtype=torch.float32).unsqueeze(0).to(self.device)  # (1, 48)
-        
-        # current_coord: (B, 2)
-        current_coord = torch.tensor([[lat, lng]], dtype=torch.float32).to(self.device)  # (1, 2)
+        slot_binary = time_slot_to_binary([slot_id])
+        current_slots = torch.tensor(slot_binary, dtype=torch.float32).unsqueeze(0).to(self.device)
+        current_coord = torch.tensor([[lat, lng]], dtype=torch.float32).to(self.device)
         image_dummy   = torch.randn(B, 3, 224, 224).to(self.device)
 
-        # 3. Forward Pass
-        # Model signature mới: (..., delta_ts, ...) -> log_probs, attn_weights, fusion_weights
         log_probs, _, fusion_weights = self.model(
-            user_ids       = torch.tensor([user_id]).to(self.device),
+            user_ids       = torch.tensor([user_id % DATA_CONFIG["num_users"]]).to(self.device),
             long_item_ids  = long_item_ids,
             long_time_ids  = long_time_ids,
             delta_ts       = delta_ts,
@@ -148,85 +150,63 @@ class AIModelManager:
             image_tensors  = image_dummy
         )
 
-        # 4. Get Top K
-        probs = torch.exp(log_probs)
-        top_vals, top_inds = torch.topk(probs, 3)
+        probs = torch.exp(log_probs).squeeze(0)
         
-        # Fusion weights: [Short, Long, Image]
-        # weights shape: (B, 3, 1) -> squeeze to (B, 3)
-        if fusion_weights is not None:
-            weights = fusion_weights[0].squeeze().tolist()
-        else:
-            weights = [0.33, 0.33, 0.33]
+        # Heavy Penalty during Lunch (11-13) or Dinner (18-20)
+        is_peak = (11 <= hour <= 13) or (18 <= hour <= 20)
+        dist_factor = 4.0 if is_peak else 2.0 
 
+        top_scores, top_indices = torch.topk(probs, 500)
+        
+        for i in range(len(top_indices)):
+            idx_str = str(top_indices[i].item())
+            if idx_str in self.mapping["idx_to_coord"]:
+                r_lat, r_lng = self.mapping["idx_to_coord"][idx_str]
+                real_dist = haversine(lat, lng, r_lat, r_lng)
+                penalty = 1.0 / (1.0 + (real_dist**2) / dist_factor)
+                top_scores[i] *= penalty
+
+        resorted_scores, resorted_inds = torch.topk(top_scores, 10)
+        top_inds = [top_indices[i] for i in resorted_inds]
+        
+        result_rest_ids = []
+        result_scores = []
+        seen_rests = set()
+        
+        for i in range(len(top_inds)):
+            idx_str = str(top_inds[i].item())
+            rid = self.mapping["idx_to_rest_id"].get(idx_str)
+            if rid and rid not in seen_rests:
+                result_rest_ids.append(rid)
+                result_scores.append(resorted_scores[i].item())
+                seen_rests.add(rid)
+            if len(result_rest_ids) >= 5: break
+
+        weights = fusion_weights[0].squeeze().tolist() if fusion_weights is not None else [0.33, 0.33, 0.33]
         weight_info = {
             "short_term_impact": round(weights[0], 2),
             "long_term_impact":  round(weights[1], 2),
             "visual_impact":     round(weights[2], 2)
         }
         
-        return top_inds[0].tolist(), top_vals[0].tolist(), weight_info
+        return result_rest_ids, result_scores, weight_info
 
-# Khởi tạo singleton manager
 ai_manager = AIModelManager()
-
-# ─── API Endpoints ──────────────────────────────────────────────────────────
 
 @app.get("/")
 def home():
-    return {
-        "status": "Online",
-        "engine": "SCR-Multimodal v2.0",
-        "device": str(ai_manager.device),
-        "message": "AI Service sẵn sàng xử lý gợi ý và nhận diện."
-    }
-
-@app.post("/api/ai/recognize-food")
-async def recognize_food(file: UploadFile = File(...)):
-    """
-    Sử dụng ImageFeatureExtractor (DenseNet201) để nhận diện đặc trưng món ăn.
-    """
-    try:
-        content = await file.read()
-        img = Image.open(io.BytesIO(content)).convert('RGB')
-        
-        # Tiền xử lý ảnh qua transform của AIEngine
-        img_tensor = IMAGE_TRANSFORM(img).unsqueeze(0).to(ai_manager.device)
-        
-        # Trích xuất đặc trưng (demo: dùng image_module của model)
-        if ai_manager.model:
-            with torch.no_grad():
-                features = ai_manager.model.image_module(img_tensor)
-            logger.info(f"Extracted features shape: {features.shape}")
-        
-        # Mapping mock kết quả dựa trên đặc trưng (Thực tế sẽ dùng lớp phân loại)
-        mock_foods = ["Phở Bò", "Bún Chả", "Pizza 4P's", "Cơm Tấm Sườn", "Mì Ý Carbonara"]
-        recognized = random.choice(mock_foods)
-        confidence = round(random.uniform(0.88, 0.99), 2)
-        
-        return {
-            "detected_food": recognized,
-            "confidence_score": confidence,
-            "message": f"AI nhận diện đây là {recognized}."
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Lỗi xử lý ảnh: {str(e)}")
+    return {"status": "Online", "engine": "SCR-Multimodal v2.1"}
 
 @app.post("/api/ai/recommend-poi", response_model=RecommendationResponse)
 def recommend_poi(request: ContextRequest):
-    """
-    Gợi ý quán ăn sử dụng mô hình SCR-Multimodal với Hierarchical Attention.
-    """
     ids, scores, weight_info = ai_manager.predict(
         request.user_id, request.lat, request.lng, request.time, request.day_of_week
     )
     
-    # Tạo lý do gợi ý dựa trên trọng số Attention
-    # weights: [Short, Long, Image]
     if weight_info.get("visual_impact", 0) > 0.4:
-        reason = "AI nhận thấy bạn đang bị thu hút bởi hình ảnh các món ăn tương tự quán này."
+        reason = "AI nhận thấy bạn quan tâm đến hình ảnh món ăn tương tự quán này."
     elif weight_info.get("short_term_impact", 0) > 0.4:
-        reason = "Gợi ý dựa trên những gì bạn vừa tìm kiếm trong 15 phút qua."
+        reason = "Gợi ý dựa trên lịch sử tìm kiếm gần đây của bạn."
     else:
         reason = "Dựa trên thói quen ăn uống ổn định của bạn vào khung giờ này."
 

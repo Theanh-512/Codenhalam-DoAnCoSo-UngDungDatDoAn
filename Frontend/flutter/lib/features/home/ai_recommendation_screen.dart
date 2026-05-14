@@ -5,7 +5,9 @@ import 'package:http/http.dart' as http;
 import '../../core/constants.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../shared/widgets/restaurant_card.dart';
-import 'restaurant_detail_screen.dart';
+import 'package:flutter_food_app/view/restaurant/restaurant_detail_view.dart';
+import 'package:flutter_food_app/model/restaurant_model.dart';
+import '../../core/services/api_service.dart';
 import '../../core/models/restaurant.dart';
 
 class AIRecommendationScreen extends ConsumerStatefulWidget {
@@ -84,7 +86,20 @@ class _AIRecommendationScreenState extends ConsumerState<AIRecommendationScreen>
                 final restaurant = _recommended[index];
                 return GestureDetector(
                   onTap: () {
-                    Navigator.of(context).push(MaterialPageRoute(builder: (context) => RestaurantDetailScreen(restaurant: restaurant)));
+                    final model = RestaurantModel(
+                      id: restaurant.id.toString(),
+                      name: restaurant.name,
+                      type1: restaurant.description,
+                      type2: 'AI Recommended',
+                      imageUrl: restaurant.imageUrl,
+                      rating: 4.8,
+                      reviewCount: 120,
+                    );
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => RestaurantDetailView(restaurant: model),
+                      ),
+                    );
                   },
                   child: RestaurantCard(
                     name: restaurant.name,

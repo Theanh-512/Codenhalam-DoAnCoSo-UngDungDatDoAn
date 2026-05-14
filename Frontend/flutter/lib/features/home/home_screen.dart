@@ -4,7 +4,8 @@ import '../../shared/widgets/category_item.dart';
 import '../../shared/widgets/restaurant_card.dart';
 import '../../core/providers/restaurant_provider.dart';
 import '../../core/theme.dart';
-import 'restaurant_detail_screen.dart';
+import 'package:flutter_food_app/view/restaurant/restaurant_detail_view.dart';
+import 'package:flutter_food_app/model/restaurant_model.dart';
 import 'ai_recommendation_screen.dart';
 import 'food_recognition_screen.dart';
 import '../../core/providers/cart_provider.dart';
@@ -161,9 +162,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         final restaurant = restaurants[index];
                         return GestureDetector(
                           onTap: () {
+                            final model = RestaurantModel(
+                              id: restaurant.id.toString(),
+                              name: restaurant.name,
+                              type1: restaurant.description,
+                              type2: 'Popular',
+                              imageUrl: restaurant.imageUrl,
+                              rating: 4.8,
+                              reviewCount: 150,
+                            );
                             Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (context) => RestaurantDetailScreen(restaurant: restaurant),
+                                builder: (context) => RestaurantDetailView(restaurant: model),
                               ),
                             );
                           },

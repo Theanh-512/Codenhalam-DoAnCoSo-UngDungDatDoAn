@@ -123,6 +123,23 @@ namespace API.Controllers
             return recommendedRestaurants;
         }
 
+        // GET: api/Restaurants/by-category/{categoryName}
+        [HttpGet("by-category/{categoryName}")]
+        public async Task<ActionResult<IEnumerable<Restaurant>>> GetRestaurantsByCategory(string categoryName)
+        {
+            var restaurants = await _context.Restaurants
+                .Where(r => _context.FoodItems.Any(f => f.RestaurantId == r.Id && f.Category!.Name == categoryName))
+                .ToListAsync();
+
+            if (restaurants == null || !restaurants.Any())
+            {
+                // Fallback: Try partial match or just return empty
+                return Ok(new List<Restaurant>());
+            }
+
+            return restaurants;
+        }
+
         private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
         {
             var R = 6371; // Bán kính trái đất (km)

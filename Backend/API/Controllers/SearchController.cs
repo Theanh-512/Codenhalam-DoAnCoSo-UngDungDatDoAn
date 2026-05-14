@@ -32,12 +32,14 @@ namespace API.Controllers
 
             // Search in Restaurants
             var restaurants = await _context.Restaurants
-                .Where(r => r.Name.ToLower().Contains(keyword) || (r.Description != null && r.Description.ToLower().Contains(keyword)))
+                .Where(r => EF.Functions.ILike(r.Name, $"%{q}%") || EF.Functions.ILike(r.Description ?? "", $"%{q}%"))
+                .Take(20)
                 .ToListAsync();
 
             // Search in FoodItems
             var foodItems = await _context.FoodItems
-                .Where(f => f.Name.ToLower().Contains(keyword) || (f.Description != null && f.Description.ToLower().Contains(keyword)))
+                .Where(f => EF.Functions.ILike(f.Name, $"%{q}%") || EF.Functions.ILike(f.Description ?? "", $"%{q}%"))
+                .Take(50)
                 .ToListAsync();
 
             return Ok(new

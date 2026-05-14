@@ -3,11 +3,15 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_food_app/common/color_extension.dart';
 import 'package:flutter_food_app/model/restaurant_model.dart';
+import 'package:flutter_food_app/view/restaurant/restaurant_detail_view.dart';
+import 'package:flutter_food_app/model/category_model.dart';
+import 'package:flutter_food_app/model/menu_item_model.dart';
+import 'package:flutter_food_app/view/home/widget/category_cell.dart';
+import 'package:flutter_food_app/view/home/widget/popular_item_cell.dart';
 import 'package:flutter_food_app/view/home/widget/restaurant_cell.dart';
 import 'package:flutter_food_app/view/map/map_picker_view.dart';
 import 'package:flutter_food_app/view/search/search_view.dart';
 import 'package:flutter_food_app/common/cart_nav.dart';
-import 'package:flutter_food_app/view/restaurant/restaurant_detail_view.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -21,6 +25,8 @@ class _HomeViewState extends State<HomeView> {
   String _currentAddress = "Vị trí hiện tại";
   /// Điểm giao hàng / vị trí tính khoảng cách đến nhà hàng.
   LatLng? _userLatLng;
+  List<CategoryModel> _categories = [];
+  List<MenuItemModel> _popularItems = [];
   bool _isLoading = true;
 
   @override
@@ -57,9 +63,16 @@ class _HomeViewState extends State<HomeView> {
       userLat: _userLatLng?.latitude,
       userLng: _userLatLng?.longitude,
     );
+    final catData = await CategoryModel.fetchAll();
+    // Lấy một số món nổi bật (mock hoặc filter từ menu items)
+    // Thực tế có thể gọi API riêng hoặc fetch ngẫu nhiên
+    final popularData = await MenuItemModel.search(""); // Search empty for all items
+    
     if (mounted) {
       setState(() {
         _restaurants = resData;
+        _categories = catData;
+        _popularItems = popularData.take(10).toList();
         _isLoading = false;
       });
     }
@@ -149,7 +162,7 @@ class _HomeViewState extends State<HomeView> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: GestureDetector(
                   onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const SearchView()));
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => SearchView()));
                   },
                   child: Container(
                     height: 50,
@@ -172,6 +185,60 @@ class _HomeViewState extends State<HomeView> {
                 ),
               ),
               const SizedBox(height: 30),
+
+              // Services Grid (Super App Style)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 4,
+                  mainAxisSpacing: 15,
+                  crossAxisSpacing: 15,
+                  childAspectRatio: 0.85,
+                  children: [
+                    _buildServiceItem(Icons.restaurant, "Đồ ăn", Colors.orange),
+                    _buildServiceItem(Icons.motorcycle, "Xe máy", Colors.green),
+                    _buildServiceItem(Icons.local_shipping, "Giao hàng", Colors.blue),
+                    _buildServiceItem(Icons.more_horiz, "Thêm", Colors.grey),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 30),
+              
+              // Categories Section
+              if (_categories.isNotEmpty) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    "Danh mục",
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: TColor.primaryText,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 15),
+                SizedBox(
+                  height: 120,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 15),
+                    itemCount: _categories.length,
+                    itemBuilder: (context, index) {
+                      return CategoryCell(
+                        category: _categories[index],
+                        onTap: () {
+                          // TODO: Navigate to category view
+                        },
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
 
               // Promotional Banner Slider
               SizedBox(
@@ -278,6 +345,34 @@ class _HomeViewState extends State<HomeView> {
             ],
           ),
         ),
+      ),
+    );
+  }
+  Widget _buildServiceItem(IconData icon, String label, Color color) {
+    return GestureDetector(
+      onTap: () {
+        // Thao tác cho demo
+      },
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Icon(icon, color: color, size: 28),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: TColor.primaryText,
+            ),
+          ),
+        ],
       ),
     );
   }

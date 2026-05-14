@@ -34,28 +34,30 @@ class RestaurantModel {
   });
 
   factory RestaurantModel.fromJson(Map<String, dynamic> json) {
-    final type1 = json['type1']?.toString() ?? '';
-    final open = json['is_open'];
+    final type1 = (json['type1'] ?? json['description'] ?? '').toString();
+    final open = json['isOpen'] ?? json['is_open'] ?? json['isActive'];
     final isOpen = open == null
         ? true
         : (open == true || open == 1 || open == '1' || open == 'true');
-    final dRaw = json['distance_km'];
+    final dRaw = json['distanceKm'] ?? json['distance_km'];
     double? dkm;
     if (dRaw != null) {
       dkm = double.tryParse(dRaw.toString());
     }
     return RestaurantModel(
-      id: json['id'] ?? '',
+      id: json['id']?.toString() ?? '',
       name: json['name'] ?? '',
       type1: type1,
-      type2: json['type2'] ?? '',
-      imageUrl: json['image'] ?? '',
-      rating: double.tryParse(json['rating'].toString()) ?? 0.0,
-      reviewCount: int.tryParse(json['review_count'].toString()) ?? 0,
+      type2: json['type2']?.toString() ?? '',
+      imageUrl: (json['imageUrl'] ?? json['image'] ?? '').toString(),
+      rating: double.tryParse(json['rating']?.toString() ?? '') ?? 
+              (4.0 + (json['id'].hashCode % 10) / 10.0), // Mock đa dạng 4.0-5.0
+      reviewCount: int.tryParse(json['reviewCount']?.toString() ?? json['review_count']?.toString() ?? '') ?? 
+              (50 + (json['id'].hashCode % 450)), // Mock 50-500
       category: json['category']?.toString() ?? type1,
       isOpen: isOpen,
-      deliveryTime: json['delivery_time']?.toString() ?? '25–35 phút',
-      deliveryFee: double.tryParse(json['delivery_fee']?.toString() ?? '') ??
+      deliveryTime: json['deliveryTime']?.toString() ?? json['delivery_time']?.toString() ?? '25–35 phút',
+      deliveryFee: double.tryParse(json['deliveryFee']?.toString() ?? json['delivery_fee']?.toString() ?? '') ??
           15000,
       distanceKm: dkm,
     );
@@ -119,5 +121,17 @@ class RestaurantModel {
     } catch (_) {
       return fetchAll();
     }
+  }
+
+  static Future<List<RestaurantModel>> fetchByCategory(String categoryName) async {
+    try {
+      final url = Uri.parse('${Globs.baseUrl}/api/Restaurants/by-category/${Uri.encodeComponent(categoryName)}');
+      final res = await http.get(url);
+      if (res.statusCode == 200) {
+        final List data = jsonDecode(res.body);
+        return data.map((e) => RestaurantModel.fromJson(e as Map<String, dynamic>)).toList();
+      }
+    } catch (_) {}
+    return [];
   }
 }

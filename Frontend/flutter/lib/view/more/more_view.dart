@@ -8,6 +8,7 @@ import 'package:flutter_food_app/view/more/inbox_view.dart';
 import 'package:flutter_food_app/view/more/notifications_view.dart';
 import 'package:flutter_food_app/view/profile/order_history_view.dart';
 import 'package:flutter_food_app/view/profile/payment_methods_view.dart';
+import 'package:flutter_food_app/view/shipper/shipper_home_view.dart';
 
 /// Tab "Khác" — menu phụ.
 class MoreView extends StatefulWidget {
@@ -132,6 +133,19 @@ class _MoreViewState extends State<MoreView> {
                         context,
                         MaterialPageRoute<void>(
                           builder: (_) => const InboxView(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _MoreTile(
+                    icon: Icons.delivery_dining_outlined,
+                    title: 'Kênh Người giao hàng',
+                    onTap: () {
+                      Navigator.push<void>(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => const ShipperHomeView(),
                         ),
                       );
                     },

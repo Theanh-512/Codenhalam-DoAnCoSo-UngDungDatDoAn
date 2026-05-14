@@ -8,8 +8,13 @@ import 'package:flutter_food_app/common/smart_image.dart';
 
 class RestaurantDetailView extends StatefulWidget {
   final RestaurantModel restaurant;
+  final String? initialCategoryName;
 
-  const RestaurantDetailView({super.key, required this.restaurant});
+  const RestaurantDetailView({
+    super.key,
+    required this.restaurant,
+    this.initialCategoryName,
+  });
 
   @override
   State<RestaurantDetailView> createState() => _RestaurantDetailViewState();
@@ -36,7 +41,18 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView> {
     setState(() {
       _menuItems = items;
       _categories = MenuItemModel.categoriesOf(items);
-      _selectedCatIndex = 0;
+      
+      if (widget.initialCategoryName != null) {
+        final idx = _categories.indexOf(widget.initialCategoryName!);
+        if (idx != -1) {
+          _selectedCatIndex = idx;
+        } else {
+          _selectedCatIndex = 0;
+        }
+      } else {
+        _selectedCatIndex = 0;
+      }
+      
       _loadingMenu = false;
     });
   }

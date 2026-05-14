@@ -8,8 +8,9 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_food_app/common/color_extension.dart';
 import 'package:flutter_food_app/common/auth_store.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_food_app/model/restaurant_model.dart';
+import 'package:flutter_food_app/view/restaurant/restaurant_detail_view.dart';
 
-/// Màn hình AI Map — Bản đồ + Gợi ý món ăn / quán ăn từ SCR-Multimodal
 class AiMapView extends StatefulWidget {
   const AiMapView({super.key});
 
@@ -22,36 +23,29 @@ class _AiMapViewState extends State<AiMapView> with TickerProviderStateMixin {
   static const String _backendBase = 'http://127.0.0.1:5149';
 
   final MapController _mapController = MapController();
-  LatLng _center = const LatLng(10.7769, 106.7009); // HCM default
+  LatLng _center = const LatLng(10.7769, 106.7009); 
 
   bool _loadingGps   = false;
   bool _loadingAi    = false;
   bool _aiReady      = false;
 
-  // AI Results
   List<int>    _recIds      = [];
   List<double> _recScores   = [];
   String       _aiReason    = '';
   Map<String, dynamic> _analysis = {};
-
-  // Restaurants from backend
   List<Map<String, dynamic>> _restaurants = [];
 
-  // Panel
-  bool _showPanel = false;
+  // Toggle Panel State
+  bool _panelExpanded = true;
 
-  // Animation
   late AnimationController _pulseCtrl;
   late Animation<double> _pulse;
 
   @override
   void initState() {
     super.initState();
-    _pulseCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 2))
-      ..repeat(reverse: true);
-    _pulse = Tween<double>(begin: 0.85, end: 1.0).animate(
-      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
-    );
+    _pulseCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat(reverse: true);
+    _pulse = Tween<double>(begin: 0.85, end: 1.0).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
     _init();
   }
 
@@ -72,9 +66,7 @@ class _AiMapViewState extends State<AiMapView> with TickerProviderStateMixin {
       var perm = await Geolocator.checkPermission();
       if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
       if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) return;
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
-      ).timeout(const Duration(seconds: 8));
+      final pos = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium)).timeout(const Duration(seconds: 8));
       if (mounted) {
         setState(() => _center = LatLng(pos.latitude, pos.longitude));
         _mapController.move(_center, 14);
@@ -85,17 +77,10 @@ class _AiMapViewState extends State<AiMapView> with TickerProviderStateMixin {
 
   Future<void> _fetchRestaurants() async {
     try {
-      final res = await http.get(
-        Uri.parse('$_backendBase/api/Restaurants'),
-        headers: {'Content-Type': 'application/json'},
-      ).timeout(const Duration(seconds: 6));
+      final res = await http.get(Uri.parse('$_backendBase/api/Restaurants'), headers: {'Content-Type': 'application/json'}).timeout(const Duration(seconds: 6));
       if (res.statusCode == 200) {
         final list = jsonDecode(res.body) as List<dynamic>;
-        if (mounted) {
-          setState(() {
-            _restaurants = list.cast<Map<String, dynamic>>();
-          });
-        }
+        if (mounted) setState(() => _restaurants = list.cast<Map<String, dynamic>>());
       }
     } catch (_) {}
   }
@@ -105,9 +90,6 @@ class _AiMapViewState extends State<AiMapView> with TickerProviderStateMixin {
     try {
       final now = DateTime.now();
       final timeStr = DateFormat('HH:mm').format(now);
-      final dow = now.weekday - 1; // 0=Mon
-
-      // Lấy userId từ token
       final token = await AuthStore.getToken();
       int userId = 1;
       if (token != null && token.isNotEmpty) {
@@ -115,49 +97,29 @@ class _AiMapViewState extends State<AiMapView> with TickerProviderStateMixin {
           final parts = token.split('.');
           if (parts.length == 3) {
             final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
-            final m = jsonDecode(payload) as Map<String, dynamic>;
-            userId = int.tryParse(m['nameid']?.toString() ?? '1') ?? 1;
+            userId = int.tryParse(jsonDecode(payload)['nameid']?.toString() ?? '1') ?? 1;
           }
         } catch (_) {}
       }
-
-      final body = jsonEncode({
-        'user_id': userId,
-        'lat': _center.latitude,
-        'lng': _center.longitude,
-        'time': timeStr,
-        'day_of_week': dow,
-      });
-
-      final res = await http.post(
-        Uri.parse('$_aiBase/api/ai/recommend-poi'),
-        headers: {'Content-Type': 'application/json'},
-        body: body,
-      ).timeout(const Duration(seconds: 10));
-
+      final body = jsonEncode({'user_id': userId, 'lat': _center.latitude, 'lng': _center.longitude, 'time': timeStr, 'day_of_week': now.weekday - 1});
+      final res = await http.post(Uri.parse('$_aiBase/api/ai/recommend-poi'), headers: {'Content-Type': 'application/json'}, body: body).timeout(const Duration(seconds: 10));
       if (res.statusCode == 200) {
-        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final data = jsonDecode(res.body);
         if (mounted) {
           setState(() {
-            _recIds    = (data['restaurant_ids'] as List<dynamic>).cast<int>();
-            _recScores = (data['confidence_scores'] as List<dynamic>).map((e) => (e as num).toDouble()).toList();
-            _aiReason  = data['reason'] as String? ?? '';
-            _analysis  = (data['analysis'] as Map<String, dynamic>?) ?? {};
-            _aiReady   = true;
-            _showPanel = true;
+            _recIds = (data['restaurant_ids'] as List).cast<int>();
+            _recScores = (data['confidence_scores'] as List).map((e) => (e as num).toDouble()).toList();
+            _aiReason = data['reason'] ?? '';
+            _analysis = data['analysis'] ?? {};
+            _aiReady = true;
           });
         }
       }
     } catch (e) {
-      // AI service offline — fallback mock
       if (mounted) {
         setState(() {
-          _recIds    = [1, 2, 3];
-          _recScores = [0.91, 0.85, 0.78];
-          _aiReason  = 'Gợi ý từ thói quen ăn uống của bạn vào khung giờ hiện tại.';
-          _analysis  = {'short_term_impact': 0.45, 'long_term_impact': 0.35, 'visual_impact': 0.20};
-          _aiReady   = true;
-          _showPanel = true;
+          _recIds = [1, 2, 3]; _recScores = [0.91, 0.85, 0.78];
+          _aiReason = 'Gợi ý từ thói quen ăn uống của bạn.'; _aiReady = true;
         });
       }
     }
@@ -165,90 +127,75 @@ class _AiMapViewState extends State<AiMapView> with TickerProviderStateMixin {
   }
 
   List<Map<String, dynamic>> get _recommended {
-    if (_restaurants.isEmpty) return [];
-    // Map recIds → restaurant. Nếu không khớp, lấy n đầu tiên
     final result = <Map<String, dynamic>>[];
-    for (int i = 0; i < _recIds.length && i < _recScores.length; i++) {
-      final idx = _recIds[i] % _restaurants.length;
-      result.add({
-        ..._restaurants[idx],
-        '_score': _recScores[i],
-        '_rank': i + 1,
-      });
+    for (int i = 0; i < _recIds.length; i++) {
+      final rId = _recIds[i].toString();
+      final found = _restaurants.firstWhere((r) => r['id'].toString() == rId, orElse: () => {});
+      if (found.isNotEmpty) {
+        result.add({...found, '_score': _recScores[i], '_rank': i + 1});
+      }
+    }
+    // Fallback nếu không có gợi ý từ AI hoặc không khớp ID
+    if (result.isEmpty && _restaurants.isNotEmpty) {
+      for (int i = 0; i < 3 && i < _restaurants.length; i++) {
+        result.add({..._restaurants[i], '_score': 0.85 - (i * 0.1), '_rank': i + 1});
+      }
     }
     return result;
   }
 
-  // Fake markers xung quanh vị trí
-  List<LatLng> get _markerPositions {
-    final base = _center;
-    return [
-      base,
-      LatLng(base.latitude + 0.003, base.longitude + 0.004),
-      LatLng(base.latitude - 0.002, base.longitude + 0.006),
-      LatLng(base.latitude + 0.005, base.longitude - 0.003),
-    ];
-  }
-
   @override
   Widget build(BuildContext context) {
+    final recList = _recommended;
     return Scaffold(
       body: Stack(
         children: [
-          // ── BẢN ĐỒ ─────────────────────────────────────────
           FlutterMap(
             mapController: _mapController,
-            options: MapOptions(
-              initialCenter: _center,
-              initialZoom: 14,
-            ),
+            options: MapOptions(initialCenter: _center, initialZoom: 14),
             children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.appfood',
-              ),
-              // Markers
+              TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.example.appfood'),
+              
+              // Multi-Route Layer
+              if (recList.isNotEmpty)
+                PolylineLayer(
+                  polylines: recList.take(3).map((r) => Polyline(
+                    points: [_center, LatLng(r['latitude'], r['longitude'])],
+                    color: r['_rank'] == 1 ? Colors.amber.withValues(alpha: 0.6) : TColor.primary.withValues(alpha: 0.4),
+                    strokeWidth: r['_rank'] == 1 ? 5 : 3,
+                  )).toList(),
+                ),
+
               MarkerLayer(
                 markers: [
-                  // User location
                   Marker(
-                    point: _center,
-                    width: 50,
-                    height: 50,
-                    child: ScaleTransition(
-                      scale: _pulse,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: TColor.primary,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 3),
-                          boxShadow: [BoxShadow(color: TColor.primary.withValues(alpha: 0.5), blurRadius: 12)],
-                        ),
-                        child: const Icon(Icons.person_pin_rounded, color: Colors.white, size: 26),
-                      ),
-                    ),
+                    point: _center, width: 50, height: 50,
+                    child: ScaleTransition(scale: _pulse, child: Container(
+                      decoration: BoxDecoration(color: TColor.primary, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 3),
+                      boxShadow: [BoxShadow(color: TColor.primary.withValues(alpha: 0.5), blurRadius: 12)]),
+                      child: const Icon(Icons.person_pin_rounded, color: Colors.white, size: 26),
+                    )),
                   ),
-                  // Restaurant markers
-                  ..._markerPositions.skip(1).toList().asMap().entries.map((e) {
-                    final rank = e.key + 1;
+                  ..._restaurants.map((r) {
+                    final recItem = recList.firstWhere((rec) => rec['id'].toString() == r['id'].toString(), orElse: () => {});
+                    final isRec = recItem.isNotEmpty;
+                    final isTop = isRec && recItem['_rank'] == 1;
+
                     return Marker(
-                      point: e.value,
-                      width: 44,
-                      height: 44,
+                      point: LatLng(r['latitude'], r['longitude']),
+                      width: isTop ? 65 : (isRec ? 55 : 44),
+                      height: isTop ? 65 : (isRec ? 55 : 44),
                       child: GestureDetector(
-                        onTap: () => setState(() => _showPanel = true),
-                        child: Container(
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => RestaurantDetailView(restaurant: RestaurantModel.fromJson(r)))),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: isTop ? Colors.amber : (isRec ? TColor.primary : Colors.white),
                             shape: BoxShape.circle,
-                            border: Border.all(color: TColor.primary, width: 2.5),
-                            boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8)],
+                            border: Border.all(color: isRec ? Colors.white : TColor.primary.withValues(alpha: 0.3), width: isRec ? 3 : 1),
+                            boxShadow: [BoxShadow(color: isTop ? Colors.amber.withValues(alpha: 0.6) : Colors.black12, blurRadius: isRec ? 12 : 4)],
                           ),
-                          child: Center(
-                            child: Text('🍜',
-                              style: const TextStyle(fontSize: 20),
-                            ),
-                          ),
+                          child: Center(child: Text(isTop ? '🏆' : (isRec ? '✨' : '🍜'), style: TextStyle(fontSize: isTop ? 28 : (isRec ? 22 : 16)))),
                         ),
                       ),
                     );
@@ -258,200 +205,60 @@ class _AiMapViewState extends State<AiMapView> with TickerProviderStateMixin {
             ],
           ),
 
-          // ── TOP BAR ────────────────────────────────────────
+          // Top Header
           Positioned(
             top: 0, left: 0, right: 0,
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: Row(
-                  children: [
-                    // AI Badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 10)],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text('🧠', style: const TextStyle(fontSize: 18)),
-                          const SizedBox(width: 6),
-                          Text('SCR AI Map',
-                            style: TextStyle(fontWeight: FontWeight.w800, color: TColor.primaryText, fontSize: 14),
-                          ),
-                          if (_loadingAi) ...[
-                            const SizedBox(width: 8),
-                            SizedBox(width: 14, height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: TColor.primary)),
-                          ] else if (_aiReady) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              width: 8, height: 8,
-                              decoration: BoxDecoration(color: TColor.primary, shape: BoxShape.circle),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const Spacer(),
-                    // Refresh button
-                    GestureDetector(
-                      onTap: _callAI,
-                      child: Container(
-                        width: 44, height: 44,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8)],
-                        ),
-                        child: Icon(Icons.refresh_rounded, color: TColor.primary),
-                      ),
-                    ),
+            child: SafeArea(child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)]),
+                  child: Row(children: [
+                    const Text('🧠', style: TextStyle(fontSize: 18)),
                     const SizedBox(width: 8),
-                    // GPS button
-                    GestureDetector(
-                      onTap: _tryGps,
-                      child: Container(
-                        width: 44, height: 44,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8)],
-                        ),
-                        child: _loadingGps
-                          ? const Center(child: SizedBox(width: 18, height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2)))
-                          : Icon(Icons.my_location_rounded, color: TColor.primary),
-                      ),
-                    ),
-                  ],
+                    Text('SCR AI Map', style: TextStyle(fontWeight: FontWeight.w800, color: TColor.primaryText)),
+                    if (_loadingAi) const Padding(padding: EdgeInsets.only(left: 8), child: SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))),
+                  ]),
                 ),
-              ),
-            ),
+                const Spacer(),
+                _mapBtn(Icons.refresh, _callAI),
+                const SizedBox(width: 8),
+                _mapBtn(Icons.my_location, _tryGps, loading: _loadingGps),
+              ]),
+            )),
           ),
 
-          // ── BOTTOM PANEL ──────────────────────────────────
-          if (_showPanel)
-            Positioned(
-              bottom: 0, left: 0, right: 0,
-              child: Container(
-                constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.55),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 20, offset: const Offset(0, -4))],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Handle
-                    const SizedBox(height: 12),
-                    Container(width: 40, height: 4,
-                      decoration: BoxDecoration(color: Colors.black12, borderRadius: BorderRadius.circular(2))),
-                    const SizedBox(height: 14),
-
-                    // AI Reason Banner
-                    if (_aiReason.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: TColor.primary.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: TColor.primary.withValues(alpha: 0.2)),
-                          ),
-                          child: Row(
-                            children: [
-                              Text('🧠', style: const TextStyle(fontSize: 16)),
-                              const SizedBox(width: 10),
-                              Expanded(child: Text(_aiReason,
-                                style: TextStyle(fontSize: 12, color: TColor.primaryDark, fontStyle: FontStyle.italic))),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                    // Attention Weights
-                    if (_analysis.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          children: [
-                            _weightChip('⚡ Ngắn hạn', _analysis['short_term_impact'] ?? 0.33),
-                            const SizedBox(width: 8),
-                            _weightChip('📅 Dài hạn', _analysis['long_term_impact'] ?? 0.33),
-                            const SizedBox(width: 8),
-                            _weightChip('📸 Hình ảnh', _analysis['visual_impact'] ?? 0.33),
-                          ],
-                        ),
-                      ),
-                    ],
-
-                    const SizedBox(height: 14),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        children: [
-                          Text('Gợi ý AI cho bạn',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: TColor.primaryText)),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(color: TColor.primary, borderRadius: BorderRadius.circular(10)),
-                            child: Text('${_recommended.length} quán',
-                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-
-                    // Restaurant Cards
-                    Flexible(
-                      child: _loadingAi
-                        ? const Center(child: CircularProgressIndicator())
-                        : _recommended.isEmpty
-                          ? _buildOfflineMock()
-                          : ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                              itemCount: _recommended.length,
-                              itemBuilder: (ctx, i) => _buildRestCard(_recommended[i], i),
-                            ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          // Collapsed toggle
-          if (!_showPanel)
-            Positioned(
-              bottom: 24, left: 0, right: 0,
-              child: Center(
-                child: GestureDetector(
-                  onTap: () => setState(() => _showPanel = true),
+          // Toggle Panel (Show/Hide)
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeInOut,
+            bottom: _panelExpanded ? 0 : -350,
+            left: 0, right: 0,
+            child: Container(
+              height: 400,
+              decoration: BoxDecoration(color: Colors.white, borderRadius: const BorderRadius.vertical(top: Radius.circular(30)), boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 20)]),
+              child: Column(children: [
+                GestureDetector(
+                  onTap: () => setState(() => _panelExpanded = !_panelExpanded),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: TColor.primary,
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [BoxShadow(color: TColor.primary.withValues(alpha: 0.4), blurRadius: 12)],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 18),
-                        const SizedBox(width: 8),
-                        const Text('Xem gợi ý AI', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-                      ],
-                    ),
+                    width: double.infinity, height: 40, color: Colors.transparent,
+                    child: Center(child: Container(width: 50, height: 5, decoration: BoxDecoration(color: Colors.black12, borderRadius: BorderRadius.circular(3)))),
                   ),
                 ),
+                Expanded(child: _buildPanelContent(recList)),
+              ]),
+            ),
+          ),
+          
+          // Small Toggle Button when hidden
+          if (!_panelExpanded)
+            Positioned(
+              bottom: 20, right: 20,
+              child: FloatingActionButton(
+                backgroundColor: TColor.primary,
+                onPressed: () => setState(() => _panelExpanded = true),
+                child: const Icon(Icons.auto_awesome, color: Colors.white),
               ),
             ),
         ],
@@ -459,174 +266,42 @@ class _AiMapViewState extends State<AiMapView> with TickerProviderStateMixin {
     );
   }
 
-  Widget _weightChip(String label, dynamic val) {
-    final double v = (val as num).toDouble();
-    final pct = (v * 100).round();
-    return Expanded(
+  Widget _mapBtn(IconData icon, VoidCallback tap, {bool loading = false}) {
+    return GestureDetector(
+      onTap: tap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: TColor.primary.withValues(alpha: 0.06 + v * 0.12),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: TColor.primary.withValues(alpha: 0.15)),
-        ),
-        child: Column(
-          children: [
-            Text(label, style: TextStyle(fontSize: 10, color: TColor.secondaryText), textAlign: TextAlign.center),
-            const SizedBox(height: 4),
-            Text('$pct%', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: TColor.primary)),
-          ],
-        ),
+        width: 44, height: 44, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8)]),
+        child: loading ? const Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator(strokeWidth: 2)) : Icon(icon, color: TColor.primary),
       ),
     );
   }
 
-  Widget _buildRestCard(Map<String, dynamic> r, int idx) {
-    final score = ((r['_score'] as double? ?? 0.9) * 100).round();
-    final imgUrl = r['imageUrl'] as String? ?? r['image_url'] as String? ?? '';
-    final name = r['name'] as String? ?? 'Quán ăn #${idx + 1}';
-    final addr = r['address'] as String? ?? r['location'] as String? ?? 'TP.HCM';
-    final rank = r['_rank'] as int? ?? idx + 1;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: rank == 1 ? Border.all(color: TColor.primary, width: 1.5) : null,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.07), blurRadius: 10, offset: const Offset(0, 3))],
-      ),
-      child: Row(
-        children: [
-          // Image
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: imgUrl.startsWith('http')
-              ? Image.network(imgUrl, width: 72, height: 72, fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _placeholder())
-              : _placeholder(),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    if (rank == 1) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(color: Colors.amber, borderRadius: BorderRadius.circular(6)),
-                        child: const Text('🏆 #1', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800)),
-                      ),
-                      const SizedBox(width: 6),
-                    ],
-                    Expanded(
-                      child: Text(name, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: TColor.primaryText),
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(addr, style: TextStyle(fontSize: 12, color: TColor.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Icon(Icons.auto_awesome_rounded, size: 14, color: TColor.primary),
-                    const SizedBox(width: 4),
-                    Text('AI: $score% phù hợp', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: TColor.primary)),
-                    const Spacer(),
-                    Icon(Icons.star_rounded, size: 14, color: Colors.amber),
-                    Text(' 4.8', style: TextStyle(fontSize: 12, color: TColor.secondaryText)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOfflineMock() {
-    // Hiển thị kết quả AI mock khi không kết nối được backend
-    final mocks = [
-      {'name': 'Phở Thìn Bờ Hồ', 'addr': '13 Lò Đúc, Hà Nội', 'score': 91, 'emoji': '🍜'},
-      {'name': 'Pizza 4Ps Saigon', 'addr': '8/15 Lê Thánh Tôn, Q.1', 'score': 85, 'emoji': '🍕'},
-      {'name': 'Bún Chả Hương Liên', 'addr': '24 Lê Văn Hưu, HN', 'score': 78, 'emoji': '🥢'},
-    ];
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-      children: mocks.asMap().entries.map((e) {
-        final i = e.key;
-        final m = e.value;
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
+  Widget _buildPanelContent(List<Map<String, dynamic>> recList) {
+    return Column(children: [
+      if (_aiReason.isNotEmpty)
+        Padding(padding: const EdgeInsets.all(16), child: Container(
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: i == 0 ? Border.all(color: TColor.primary, width: 1.5) : null,
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.07), blurRadius: 10, offset: const Offset(0, 3))],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 72, height: 72,
-                decoration: BoxDecoration(
-                  color: TColor.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Center(child: Text(m['emoji'] as String, style: const TextStyle(fontSize: 36))),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        if (i == 0) ...[
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(color: Colors.amber, borderRadius: BorderRadius.circular(6)),
-                            child: const Text('🏆 #1', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800)),
-                          ),
-                          const SizedBox(width: 6),
-                        ],
-                        Expanded(child: Text(m['name'] as String,
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: TColor.primaryText),
-                          maxLines: 1, overflow: TextOverflow.ellipsis)),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(m['addr'] as String, style: TextStyle(fontSize: 12, color: TColor.secondaryText)),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(Icons.auto_awesome_rounded, size: 14, color: TColor.primary),
-                        const SizedBox(width: 4),
-                        Text('AI: ${m['score']}% phù hợp',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: TColor.primary)),
-                        const Spacer(),
-                        const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
-                        Text(' 4.8', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
+          decoration: BoxDecoration(color: TColor.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(15)),
+          child: Row(children: [const Text('🧠'), const SizedBox(width: 10), Expanded(child: Text(_aiReason, style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic)))]),
+        )),
+      Expanded(child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: recList.length,
+        itemBuilder: (ctx, i) {
+          final r = recList[i];
+          return Card(
+            margin: const EdgeInsets.only(bottom: 10),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            child: ListTile(
+              leading: CircleAvatar(backgroundColor: r['_rank'] == 1 ? Colors.amber : TColor.primary, child: Text('${r['_rank']}', style: const TextStyle(color: Colors.white))),
+              title: Text(r['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text('AI phù hợp: ${(r['_score'] * 100).round()}%'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => RestaurantDetailView(restaurant: RestaurantModel.fromJson(r)))),
+            ),
+          );
+        },
+      )),
+    ]);
   }
-
-  Widget _placeholder() => Container(
-    width: 72, height: 72,
-    decoration: BoxDecoration(color: TColor.textfield, borderRadius: BorderRadius.circular(10)),
-    child: const Center(child: Text('🍽️', style: TextStyle(fontSize: 30))),
-  );
 }
