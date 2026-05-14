@@ -34,21 +34,22 @@ class HierarchicalFusion(nn.Module):
         self.v_fusion = nn.Linear(dim, 1, bias=False)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, u_short, u_long, e_img):
+    def forward(self, u_short, u_long, e_img, e_review):
         """
         Args:
             u_short: (B, D)
             u_long:  (B, D)
             e_img:   (B, D)
+            e_review: (B, D) - Vector đặc trưng cảm xúc từ Review
         Returns:
             fused: (B, D)
         """
-        # Stack vectors: (B, 3, D)
-        stacked = torch.stack([u_short, u_long, e_img], dim=1)
+        # Stack vectors: (B, 4, D)
+        stacked = torch.stack([u_short, u_long, e_img, e_review], dim=1)
         
-        # Attention scores: score = v^T * tanh(W * stacked)
-        scores = self.v_fusion(torch.tanh(self.W_fusion(stacked))).squeeze(-1) # (B, 3)
-        weights = F.softmax(scores, dim=-1).unsqueeze(-1) # (B, 3, 1)
+        # Attention scores: (B, 4)
+        scores = self.v_fusion(torch.tanh(self.W_fusion(stacked))).squeeze(-1) 
+        weights = F.softmax(scores, dim=-1).unsqueeze(-1) # (B, 4, 1)
         
         # Weighted sum
         fused = (weights * stacked).sum(dim=1) # (B, D)
@@ -99,8 +100,9 @@ class SCRMultimodalRecommender(nn.Module):
         # ── E. Fusion & Prediction Head ──────────────────────────────────────
         # Đảm bảo các vector có cùng chiều để dùng Hierarchical Attention
         # Nếu khác chiều, ta sẽ thêm các lớp Linear để map về chung item_dim (64)
-        self.map_long  = nn.Linear(lstm_hidden, item_dim) if lstm_hidden != item_dim else nn.Identity()
-        self.map_image = nn.Linear(image_dim, item_dim)   if image_dim != item_dim else nn.Identity()
+        self.map_long   = nn.Linear(lstm_hidden, item_dim) if lstm_hidden != item_dim else nn.Identity()
+        self.map_image  = nn.Linear(image_dim, item_dim)   if image_dim != item_dim else nn.Identity()
+        self.map_review = nn.Linear(1, item_dim) # Ánh xạ điểm sentiment (1 chiều) sang item_dim (64 chiều)
 
         self.hierarchical_fusion = HierarchicalFusion(dim=item_dim, dropout=dropout)
 
@@ -127,6 +129,7 @@ class SCRMultimodalRecommender(nn.Module):
                 current_coord:  torch.Tensor,
                 short_item_ids: torch.Tensor,
                 image_tensors:  torch.Tensor,
+                review_scores:  torch.Tensor, # (B, 1) - Điểm cảm xúc từ Google/Supabase
                 padding_mask:   torch.Tensor = None):
         """
         Args:
@@ -140,6 +143,7 @@ class SCRMultimodalRecommender(nn.Module):
             current_coord:  (B, 2)
             short_item_ids: (B, S)
             image_tensors:  (B, 3, 224, 224)
+            review_scores:  (B, 1)
             padding_mask:   (B, S)
         """
         # ── A. Embeddings ──────────────────────────────────────────────────
@@ -170,10 +174,13 @@ class SCRMultimodalRecommender(nn.Module):
         e_img = self.image_module(image_tensors)         # (B, image_dim)
 
         # ── E. Hierarchical Fusion → Prediction ─────────────────────────────
-        u_long_mapped = self.map_long(u_long)
-        e_img_mapped  = self.map_image(e_img)
+        u_long_mapped   = self.map_long(u_long)
+        e_img_mapped    = self.map_image(e_img)
+        e_review_mapped = self.map_review(review_scores)
         
-        fused, fusion_weights = self.hierarchical_fusion(u_short, u_long_mapped, e_img_mapped)
+        fused, fusion_weights = self.hierarchical_fusion(
+            u_short, u_long_mapped, e_img_mapped, e_review_mapped
+        )
         
         logits = self.prediction_head(fused)
         log_probs = F.log_softmax(logits, dim=-1)
