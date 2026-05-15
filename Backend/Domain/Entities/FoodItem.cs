@@ -3,9 +3,9 @@ namespace Domain.Entities
     public class FoodItem : BaseEntity
     {
         public string Name { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
+        public string? Description { get; set; }
         public decimal Price { get; set; }
-        public string ImageUrl { get; set; } = string.Empty;
+        public string? ImageUrl { get; set; }
         public double Rating { get; set; } = 5.0;
         public bool IsAvailable { get; set; } = true;
         public int CategoryId { get; set; }

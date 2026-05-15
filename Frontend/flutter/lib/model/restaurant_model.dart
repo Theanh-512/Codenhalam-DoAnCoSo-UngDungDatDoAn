@@ -108,15 +108,20 @@ class RestaurantModel {
   }
 
   static Future<List<RestaurantModel>> search(String q) async {
+    final query = q.trim();
+    if (query.isEmpty) return [];
     try {
       final url = Uri.parse(Globs.searchUrl).replace(
-        queryParameters: {'q': q},
+        queryParameters: {'q': query},
       );
-      final res = await http.get(url);
+      final res = await http.get(url).timeout(const Duration(seconds: 15));
       if (res.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(res.body);
         final List restList = data['restaurants'] ?? data['Restaurants'] ?? [];
-        return restList.map((e) => RestaurantModel.fromJson(e as Map<String, dynamic>)).toList();
+        return restList
+            .map((e) => RestaurantModel.fromJson(e as Map<String, dynamic>))
+            .where((r) => r.name.isNotEmpty)
+            .toList();
       }
     } catch (_) {}
     return [];

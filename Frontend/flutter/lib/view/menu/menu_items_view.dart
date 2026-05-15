@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_food_app/common/cart_nav.dart';
 import 'package:flutter_food_app/common/color_extension.dart';
 import 'package:flutter_food_app/common/smart_image.dart';
+import 'package:flutter_food_app/common_widget/app_search_bar.dart';
 import 'package:flutter_food_app/view/menu/item_detail_view.dart';
 import 'package:flutter_food_app/model/menu_item_model.dart';
 import 'package:intl/intl.dart';
@@ -94,46 +95,12 @@ class _MenuItemsViewState extends State<MenuItemsView> {
       body: SafeArea(
         child: Column(
           children: [
-            // Search bar
             Container(
               color: Colors.white,
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
-              child: Container(
-                height: 48,
-                decoration: BoxDecoration(
-                  color: TColor.textfield,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 16),
-                    Icon(Icons.search, color: TColor.placeholder),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: _search,
-                        decoration: InputDecoration(
-                          hintText:
-                              'Tìm trong ${widget.mObj["name"] ?? "danh mục"}...',
-                          hintStyle: TextStyle(
-                              color: TColor.placeholder, fontSize: 14),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding:
-                              const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                      ),
-                    ),
-                    if (_search.text.isNotEmpty)
-                      IconButton(
-                        onPressed: () {
-                          _search.clear();
-                        },
-                        icon: Icon(Icons.close,
-                            color: TColor.placeholder, size: 18),
-                      ),
-                  ],
-                ),
+              child: AppSearchBar.inline(
+                controller: _search,
+                hintText: 'Tìm trong ${widget.mObj["name"] ?? "danh mục"}...',
               ),
             ),
 

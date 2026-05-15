@@ -95,16 +95,20 @@ class MenuItemModel {
   }
 
   static Future<List<MenuItemModel>> search(String q) async {
+    final query = q.trim();
+    if (query.isEmpty) return [];
     try {
       final url = Uri.parse(Globs.searchUrl).replace(
-        queryParameters: {'q': q},
+        queryParameters: {'q': query},
       );
-      final res = await http.get(url);
+      final res = await http.get(url).timeout(const Duration(seconds: 15));
       if (res.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(res.body);
-        // Hỗ trợ cả PascalCase và camelCase cho key 'FoodItems'
         final List foodList = data['foodItems'] ?? data['FoodItems'] ?? [];
-        return foodList.map((e) => MenuItemModel.fromJson(e)).toList();
+        return foodList
+            .map((e) => MenuItemModel.fromJson(e as Map<String, dynamic>))
+            .where((m) => m.name.isNotEmpty)
+            .toList();
       }
     } catch (_) {}
     return [];

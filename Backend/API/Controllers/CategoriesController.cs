@@ -22,7 +22,8 @@ namespace API.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<object>>> GetCategories()
         {
-            var categories = await _context.Categories
+            var rows = await _context.Categories
+                .AsNoTracking()
                 .Select(c => new {
                     id = c.Id,
                     name = c.Name,
@@ -31,6 +32,14 @@ namespace API.Controllers
                     items_count = c.FoodItems.Count()
                 })
                 .ToListAsync();
+
+            var categories = rows.Select(c => new {
+                c.id,
+                name = c.name ?? "",
+                description = c.description ?? "",
+                imageUrl = c.imageUrl ?? "",
+                c.items_count
+            });
             return Ok(categories);
         }
 

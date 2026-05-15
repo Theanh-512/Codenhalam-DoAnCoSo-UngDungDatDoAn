@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_food_app/common/color_extension.dart';
+import 'package:flutter_food_app/common_widget/app_search_bar.dart';
 import 'package:flutter_food_app/common/smart_image.dart';
 import 'package:flutter_food_app/model/menu_item_model.dart';
 import 'package:flutter_food_app/model/restaurant_model.dart';
@@ -82,9 +83,8 @@ class _SearchViewState extends State<SearchView> {
     }
   }
 
-  void _clearSearch() {
+  void _onClearSearch() {
     _debounce?.cancel();
-    _txtSearch.clear();
     setState(() {
       _foodResults = [];
       _restaurantResults = [];
@@ -118,53 +118,12 @@ class _SearchViewState extends State<SearchView> {
                     icon: Icon(Icons.arrow_back_ios_new, color: TColor.primaryText),
                   ),
                   Expanded(
-                    child: Container(
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: TColor.textfield,
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Row(
-                        children: [
-                          const SizedBox(width: 16),
-                          Icon(Icons.search, color: TColor.placeholder),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: TextField(
-                              controller: _txtSearch,
-                              autofocus: widget.autofocus,
-                              keyboardType: TextInputType.text,
-                              textCapitalization: TextCapitalization.none,
-                              textInputAction: TextInputAction.search,
-                              // iOS: spell check / smart punctuation hay cắt ngang bước gõ Telex–VNI.
-                              spellCheckConfiguration:
-                                  const SpellCheckConfiguration.disabled(),
-                              smartDashesType: SmartDashesType.disabled,
-                              smartQuotesType: SmartQuotesType.disabled,
-                              autocorrect: true,
-                              enableSuggestions: true,
-                              onChanged: (_) => _scheduleSearch(),
-                              decoration: InputDecoration(
-                                hintText: "Tìm kiếm món ăn, danh mục...",
-                                hintStyle: TextStyle(color: TColor.placeholder, fontSize: 14),
-                                border: InputBorder.none,
-                                isDense: true,
-                                contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                              ),
-                            ),
-                          ),
-                          ValueListenableBuilder<TextEditingValue>(
-                            valueListenable: _txtSearch,
-                            builder: (context, value, _) {
-                              if (value.text.isEmpty) return const SizedBox.shrink();
-                              return IconButton(
-                                onPressed: _clearSearch,
-                                icon: Icon(Icons.close, color: TColor.primary),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
+                    child: AppSearchBar.inline(
+                      controller: _txtSearch,
+                      autofocus: widget.autofocus,
+                      onChanged: (_) => _scheduleSearch(),
+                      onSubmitted: _runSearchAfterCompose,
+                      onClear: _onClearSearch,
                     ),
                   ),
                 ],

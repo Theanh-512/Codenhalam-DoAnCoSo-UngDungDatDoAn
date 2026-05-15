@@ -5,6 +5,7 @@ import 'package:flutter_food_app/model/menu_item_model.dart';
 import 'package:flutter_food_app/model/cart_item_model.dart';
 import 'package:flutter_food_app/common/cart_nav.dart';
 import 'package:flutter_food_app/common/smart_image.dart';
+import 'package:flutter_food_app/common_widget/app_search_bar.dart';
 
 class RestaurantDetailView extends StatefulWidget {
   final RestaurantModel restaurant;
@@ -151,32 +152,11 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView> {
   Widget _buildSearchBox() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      child: Container(
-        height: 50,
-        decoration: BoxDecoration(
-          color: TColor.textfield,
-          borderRadius: BorderRadius.circular(15),
-        ),
-        child: TextField(
-          controller: _txtSearch,
-          onChanged: (val) => setState(() => _searchQuery = val),
-          decoration: InputDecoration(
-            hintText: "Tìm món trong nhà hàng...",
-            hintStyle: TextStyle(color: TColor.placeholder, fontSize: 14),
-            prefixIcon: Icon(Icons.search_rounded, color: TColor.secondaryText),
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(vertical: 13),
-            suffixIcon: _searchQuery.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 20),
-                    onPressed: () {
-                      _txtSearch.clear();
-                      setState(() => _searchQuery = "");
-                    },
-                  )
-                : null,
-          ),
-        ),
+      child: AppSearchBar.inline(
+        controller: _txtSearch,
+        hintText: 'Tìm món trong nhà hàng...',
+        onChanged: (val) => setState(() => _searchQuery = val),
+        onClear: () => setState(() => _searchQuery = ''),
       ),
     );
   }

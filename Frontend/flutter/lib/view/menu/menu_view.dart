@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_food_app/common/cart_nav.dart';
 import 'package:flutter_food_app/common/color_extension.dart';
-import 'package:flutter_food_app/view/menu/category_restaurants_view.dart';
-import 'package:flutter_food_app/view/menu/menu_items_view.dart';
-import 'package:flutter_food_app/view/search/search_view.dart';
-import 'package:flutter_food_app/model/category_model.dart';
 import 'package:flutter_food_app/common/smart_image.dart';
+import 'package:flutter_food_app/model/category_model.dart';
+import 'package:flutter_food_app/model/restaurant_model.dart';
+import 'package:flutter_food_app/view/restaurant/restaurant_detail_view.dart';
+import 'package:flutter_food_app/common_widget/app_search_bar.dart';
 
 class MenuView extends StatefulWidget {
   const MenuView({super.key});
@@ -15,235 +15,447 @@ class MenuView extends StatefulWidget {
 }
 
 class _MenuViewState extends State<MenuView> {
-  List<CategoryModel> menuArr = [];
-  bool isLoading = true;
+  List<CategoryModel> _categories = [];
+  List<RestaurantModel> _restaurants = [];
+  int _selectedIndex = 0;
+  bool _loadingCategories = true;
+  bool _loadingRestaurants = false;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _fetchData();
+    _loadCategories();
   }
 
-  void _fetchData() async {
-    final res = await CategoryModel.fetchAll();
-    if (mounted) {
+  Future<void> _loadCategories() async {
+    setState(() {
+      _loadingCategories = true;
+      _error = null;
+    });
+    final list = await CategoryModel.fetchAll();
+    if (!mounted) return;
+    if (list.isEmpty) {
       setState(() {
-        menuArr = res;
-        isLoading = false;
+        _categories = [];
+        _loadingCategories = false;
+        _error = 'Không tải được danh mục.\nKiểm tra backend đang chạy (port 5149).';
       });
+      return;
     }
+    setState(() {
+      _categories = list;
+      _selectedIndex = 0;
+      _loadingCategories = false;
+    });
+    _loadRestaurants(list.first.name);
   }
+
+  Future<void> _loadRestaurants(String categoryName) async {
+    setState(() => _loadingRestaurants = true);
+    final list = await RestaurantModel.fetchByCategory(categoryName);
+    if (!mounted) return;
+    setState(() {
+      _restaurants = list;
+      _loadingRestaurants = false;
+    });
+  }
+
+  void _onCategoryTap(int index) {
+    if (index == _selectedIndex) return;
+    setState(() => _selectedIndex = index);
+    _loadRestaurants(_categories[index].name);
+  }
+
+  CategoryModel? get _selectedCategory =>
+      _categories.isEmpty ? null : _categories[_selectedIndex];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: isLoading 
-        ? const Center(child: CircularProgressIndicator())
-        : SafeArea(
+      backgroundColor: const Color(0xFFF7F7F7),
+      body: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            _buildHeader(),
+            _buildSearchBar(),
+            const SizedBox(height: 12),
+            Expanded(child: _buildBody()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 12, 0),
+      child: Row(
+        children: [
+          Text(
+            'Thực đơn',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: TColor.primaryText,
+            ),
+          ),
+          const Spacer(),
+          IconButton(
+            onPressed: () => openAppCart(context),
+            icon: Icon(Icons.shopping_cart_outlined, size: 26, color: TColor.primaryText),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(20, 8, 20, 0),
+      child: AppSearchBar.tap(),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_loadingCategories) {
+      return const Center(child: CircularProgressIndicator(color: Color(0xff00B14F)));
+    }
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.cloud_off_rounded, size: 56, color: Colors.grey.shade400),
+              const SizedBox(height: 16),
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: TColor.secondaryText, fontSize: 15, height: 1.4),
+              ),
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                onPressed: _loadCategories,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Thử lại'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: TColor.primary,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildCategorySidebar(),
+        Expanded(child: _buildRestaurantPanel()),
+      ],
+    );
+  }
+
+  Widget _buildCategorySidebar() {
+    return Container(
+      width: 108,
+      margin: const EdgeInsets.only(left: 0),
+      decoration: BoxDecoration(
+        color: TColor.primary,
+        borderRadius: const BorderRadius.only(
+          topRight: Radius.circular(28),
+          bottomRight: Radius.circular(28),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: TColor.primary.withValues(alpha: 0.25),
+            blurRadius: 12,
+            offset: const Offset(4, 0),
+          ),
+        ],
+      ),
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        itemCount: _categories.length,
+        itemBuilder: (context, index) {
+          final cat = _categories[index];
+          final selected = index == _selectedIndex;
+          return GestureDetector(
+            onTap: () => _onCategoryTap(index),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+              decoration: BoxDecoration(
+                color: selected ? Colors.white : Colors.transparent,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
+                  _buildCategoryIcon(cat, selected),
+                  const SizedBox(height: 6),
                   Text(
-                    "Thực đơn",
+                    cat.name,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: TColor.primaryText,
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => openAppCart(context),
-                    icon: Icon(
-                      Icons.shopping_cart_outlined,
-                      size: 28,
-                      color: TColor.primaryText,
+                      fontSize: 11,
+                      fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                      height: 1.2,
+                      color: selected ? TColor.primary : Colors.white,
                     ),
                   ),
                 ],
               ),
             ),
+          );
+        },
+      ),
+    );
+  }
 
-            // Search Bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: GestureDetector(
-                onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const SearchView()));
-                },
-                child: Container(
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: const Color(0xfff2f2f2),
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                  child: Row(
-                    children: [
-                      const SizedBox(width: 15),
-                      Icon(Icons.search, color: TColor.secondaryText),
-                      const SizedBox(width: 10),
-                      Text(
-                        "Search food",
-                        style: TextStyle(color: TColor.placeholder, fontSize: 14),
-                      ),
-                    ],
+  Widget _buildCategoryIcon(CategoryModel cat, bool selected) {
+    if (cat.imageUrl.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: SmartImage(
+          cat.imageUrl,
+          width: 44,
+          height: 44,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _emojiIcon(cat.displayEmoji, selected),
+        ),
+      );
+    }
+    return _emojiIcon(cat.displayEmoji, selected);
+  }
+
+  Widget _emojiIcon(String emoji, bool selected) {
+    return Container(
+      width: 44,
+      height: 44,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: selected ? TColor.primary.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(emoji, style: const TextStyle(fontSize: 24)),
+    );
+  }
+
+  Widget _buildRestaurantPanel() {
+    final cat = _selectedCategory;
+    if (cat == null) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  cat.name,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: TColor.primaryText,
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-
-            // Stack for the Orange BG and the List
-            Expanded(
-              child: Stack(
-                children: [
-                  // Orange Backing
-                  Positioned(
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: 90, 
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: TColor.primary,
-                        borderRadius: const BorderRadius.only(
-                          topRight: Radius.circular(45),
-                          bottomRight: Radius.circular(45),
-                        ),
-                      ),
-                    ),
+              if (cat.itemsCount > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: TColor.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-
-                  // Menu List
-                  ListView.builder(
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    itemCount: menuArr.length,
-                    itemBuilder: (context, index) {
-                      var data = menuArr[index];
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => CategoryRestaurantsView(categoryName: data.name),
-                            ),
+                  child: Text(
+                    '${cat.itemsCount} món',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: TColor.primary),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: _loadingRestaurants
+              ? const Center(child: CircularProgressIndicator(color: Color(0xff00B14F)))
+              : _restaurants.isEmpty
+                  ? _buildEmptyRestaurants()
+                  : RefreshIndicator(
+                      color: TColor.primary,
+                      onRefresh: () => _loadRestaurants(cat.name),
+                      child: ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(12, 0, 16, 16),
+                        itemCount: _restaurants.length,
+                        itemBuilder: (context, index) {
+                          final r = _restaurants[index];
+                          return _MenuRestaurantCard(
+                            restaurant: r,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => RestaurantDetailView(
+                                    restaurant: r,
+                                    initialCategoryName: cat.name,
+                                  ),
+                                ),
+                              );
+                            },
                           );
                         },
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 25),
-                          child: Stack(
-                            alignment: Alignment.centerLeft,
-                            clipBehavior: Clip.none,
-                            children: [
-                              // The White Card
-                              Container(
-                                width: double.infinity,
-                                margin: const EdgeInsets.only(left: 60, right: 30),
-                                padding: const EdgeInsets.only(left: 60, top: 25, bottom: 25, right: 20),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: const BorderRadius.only(
-                                    topLeft: Radius.circular(50),
-                                    bottomLeft: Radius.circular(50),
-                                    topRight: Radius.circular(15),
-                                    bottomRight: Radius.circular(15),
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.05),
-                                      blurRadius: 15,
-                                      offset: const Offset(0, 5),
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      data.name,
-                                      style: TextStyle(
-                                        color: TColor.primaryText,
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      "${data.itemsCount} Items",
-                                      style: TextStyle(
-                                        color: TColor.secondaryText,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                      ),
+                    ),
+        ),
+      ],
+    );
+  }
 
-                              // The Circular Image Overlapping on the left
-                              Positioned(
-                                left: 20,
-                                child: Container(
-                                  width: 80,
-                                  height: 80,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black12,
-                                        blurRadius: 10,
-                                        offset: Offset(0, 4),
-                                      )
-                                    ]
-                                  ),
-                                  child: ClipOval(
-                                    child: SmartImage(
-                                      data.imageUrl,
-                                      width: 80,
-                                      height: 80,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
-                                ),
-                              ),
+  Widget _buildEmptyRestaurants() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.storefront_outlined, size: 52, color: Colors.grey.shade300),
+            const SizedBox(height: 12),
+            Text(
+              'Chưa có nhà hàng\ncho danh mục này',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: TColor.secondaryText, fontSize: 15, height: 1.35),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-                              // The Arrow button intersecting the right
-                              Positioned(
-                                right: 12,
-                                child: Container(
-                                  width: 36,
-                                  height: 36,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                            color: Colors.black.withValues(alpha: 0.08),
-                                        blurRadius: 6,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Icon(
-                                    Icons.arrow_forward_ios_rounded,
-                                    color: TColor.primary,
-                                    size: 16,
-                                  ),
-                                ),
-                              ),
-                            ],
+class _MenuRestaurantCard extends StatelessWidget {
+  final RestaurantModel restaurant;
+  final VoidCallback onTap;
+
+  const _MenuRestaurantCard({required this.restaurant, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.horizontal(left: Radius.circular(14)),
+              child: SmartImage(
+                restaurant.imageUrl,
+                width: 100,
+                height: 100,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 100,
+                  height: 100,
+                  color: Colors.grey.shade200,
+                  child: Icon(Icons.restaurant, color: Colors.grey.shade400, size: 36),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      restaurant.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: TColor.primaryText,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(Icons.star_rounded, color: Colors.amber.shade700, size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${restaurant.rating}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: TColor.primaryText,
                           ),
                         ),
-                      );
-                    },
-                  ),
-                ],
+                        Text(
+                          ' (${restaurant.reviewCount}+)',
+                          style: TextStyle(fontSize: 12, color: TColor.secondaryText),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      restaurant.typeTagsDisplayLine,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12, color: TColor.secondaryText),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(Icons.access_time_rounded, size: 13, color: TColor.secondaryText),
+                        const SizedBox(width: 4),
+                        Text(
+                          restaurant.deliveryTime,
+                          style: TextStyle(fontSize: 11, color: TColor.secondaryText),
+                        ),
+                        const Spacer(),
+                        if (restaurant.isOpen)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              'Mở cửa',
+                              style: TextStyle(
+                                color: Colors.green,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

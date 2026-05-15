@@ -10,7 +10,7 @@ import 'package:flutter_food_app/view/home/widget/category_cell.dart';
 import 'package:flutter_food_app/view/home/widget/popular_item_cell.dart';
 import 'package:flutter_food_app/view/home/widget/restaurant_cell.dart';
 import 'package:flutter_food_app/view/map/map_picker_view.dart';
-import 'package:flutter_food_app/view/search/search_view.dart';
+import 'package:flutter_food_app/common_widget/app_search_bar.dart';
 import 'package:flutter_food_app/common/cart_nav.dart';
 import 'package:flutter_food_app/features/home/food_recognition_screen.dart';
 
@@ -158,32 +158,9 @@ class _HomeViewState extends State<HomeView> {
               ),
               const SizedBox(height: 20),
 
-              // Search Bar
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => SearchView()));
-                  },
-                  child: Container(
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: TColor.textfield,
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                    child: Row(
-                      children: [
-                        const SizedBox(width: 15),
-                        Icon(Icons.search, color: TColor.secondaryText),
-                        const SizedBox(width: 10),
-                        Text(
-                          "Tìm kiếm món ăn",
-                          style: TextStyle(color: TColor.placeholder, fontSize: 14),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                child: const AppSearchBar.tap(),
               ),
               const SizedBox(height: 30),
 
@@ -205,11 +182,10 @@ class _HomeViewState extends State<HomeView> {
                         MaterialPageRoute(builder: (context) => const FoodRecognitionScreen()),
                       );
                       if (result != null && result.isNotEmpty && mounted) {
-                        Navigator.push(
+                        AppSearchBar.openSearch(
                           context,
-                          MaterialPageRoute(
-                            builder: (context) => SearchView(initialQuery: result, autofocus: false),
-                          ),
+                          initialQuery: result,
+                          autofocus: false,
                         );
                       }
                     }),
