@@ -60,6 +60,7 @@ namespace API.Controllers
                 id = user.Id, 
                 email = user.Email, 
                 fullName = user.FullName,
+                userRole = user.UserRole,
                 message = "Đăng nhập thành công" 
             });
         }
@@ -90,6 +91,22 @@ namespace API.Controllers
                 id = newUser.Id,
                 email = newUser.Email,
                 fullName = newUser.FullName
+            });
+        }
+
+        [HttpGet("profile")]
+        public async Task<IActionResult> GetProfile()
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == "admin@gmail.com");
+            if (user == null) user = await _context.Users.FirstOrDefaultAsync();
+            if (user == null) return NotFound();
+
+            return Ok(new {
+                id = user.Id,
+                email = user.Email,
+                fullname = user.FullName,
+                userRole = user.UserRole,
+                created_at = user.CreatedDate
             });
         }
     }

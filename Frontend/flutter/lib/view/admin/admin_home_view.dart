@@ -32,7 +32,7 @@ class AdminHomeView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          _SectionLabel('Vận hành'),
+          const _SectionLabel('Vận hành'),
           _AdminCard(
             icon: Icons.receipt_long_outlined,
             title: 'Đơn hàng',
@@ -40,12 +40,13 @@ class AdminHomeView extends StatelessWidget {
             onTap: () {
               Navigator.push<void>(
                 context,
-                MaterialPageRoute<void>(builder: (_) => const AdminOrdersView()),
+                MaterialPageRoute<void>(
+                    builder: (_) => const AdminOrdersView()),
               );
             },
           ),
           const SizedBox(height: 12),
-          _SectionLabel('Cửa hàng & menu'),
+          const _SectionLabel('Cửa hàng & menu'),
           _AdminCard(
             icon: Icons.storefront_outlined,
             title: 'Nhà hàng',
@@ -53,7 +54,8 @@ class AdminHomeView extends StatelessWidget {
             onTap: () {
               Navigator.push<void>(
                 context,
-                MaterialPageRoute<void>(builder: (_) => const AdminRestaurantsView()),
+                MaterialPageRoute<void>(
+                    builder: (_) => const AdminRestaurantsView()),
               );
             },
           ),
@@ -65,7 +67,8 @@ class AdminHomeView extends StatelessWidget {
             onTap: () {
               Navigator.push<void>(
                 context,
-                MaterialPageRoute<void>(builder: (_) => const AdminCategoriesView()),
+                MaterialPageRoute<void>(
+                    builder: (_) => const AdminCategoriesView()),
               );
             },
           ),
@@ -77,25 +80,28 @@ class AdminHomeView extends StatelessWidget {
             onTap: () {
               Navigator.push<void>(
                 context,
-                MaterialPageRoute<void>(builder: (_) => const AdminMenuItemsView()),
+                MaterialPageRoute<void>(
+                    builder: (_) => const AdminMenuItemsView()),
               );
             },
           ),
           const SizedBox(height: 20),
-          _SectionLabel('Marketing'),
+          const _SectionLabel('Marketing'),
           _AdminCard(
             icon: Icons.local_offer_outlined,
             title: 'Voucher',
-            subtitle: 'Mã giảm giá — bật/tắt, loại FREESHIP / GIAM20K / MONKEY10',
+            subtitle:
+                'Mã giảm giá — bật/tắt, loại FREESHIP / GIAM20K / MONKEY10',
             onTap: () {
               Navigator.push<void>(
                 context,
-                MaterialPageRoute<void>(builder: (_) => const AdminVouchersView()),
+                MaterialPageRoute<void>(
+                    builder: (_) => const AdminVouchersView()),
               );
             },
           ),
           const SizedBox(height: 20),
-          _SectionLabel('Tài khoản'),
+          const _SectionLabel('Tài khoản'),
           _AdminCard(
             icon: Icons.people_outline_rounded,
             title: 'Người dùng',

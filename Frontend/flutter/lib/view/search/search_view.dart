@@ -2,23 +2,39 @@ import 'package:flutter/material.dart';
 import 'package:flutter_food_app/common/color_extension.dart';
 import 'package:flutter_food_app/common/smart_image.dart';
 import 'package:flutter_food_app/model/menu_item_model.dart';
+import 'package:flutter_food_app/model/restaurant_model.dart';
 import 'package:flutter_food_app/view/menu/item_detail_view.dart';
+import 'package:flutter_food_app/view/restaurant/restaurant_detail_view.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 
 class SearchView extends StatefulWidget {
   final bool autofocus;
-  const SearchView({super.key, this.autofocus = true});
+  final String? initialQuery;
+  const SearchView({super.key, this.autofocus = true, this.initialQuery});
 
   @override
   State<SearchView> createState() => _SearchViewState();
 }
 
 class _SearchViewState extends State<SearchView> {
-  final TextEditingController _txtSearch = TextEditingController();
-  List<MenuItemModel> _searchResults = [];
+  late final TextEditingController _txtSearch;
+  List<MenuItemModel> _foodResults = [];
+  List<RestaurantModel> _restaurantResults = [];
   Timer? _debounce;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _txtSearch = TextEditingController(text: widget.initialQuery ?? "");
+    if (widget.initialQuery != null && widget.initialQuery!.isNotEmpty) {
+      // Delay một chút để build xong rồi gọi search
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _runSearchAfterCompose();
+      });
+    }
+  }
 
   /// IME tiếng Việt đang trong bước gõ dấu — tránh gọi API/setState làm gián đoạn composition.
   bool _isComposing(TextEditingValue v) =>
@@ -40,7 +56,8 @@ class _SearchViewState extends State<SearchView> {
     final q = v.text.trim();
     if (q.isEmpty) {
       setState(() {
-        _searchResults = [];
+        _foodResults = [];
+        _restaurantResults = [];
         _isLoading = false;
       });
       return;
@@ -50,11 +67,16 @@ class _SearchViewState extends State<SearchView> {
       _isLoading = true;
     });
 
-    final results = await MenuItemModel.search(q);
+    // Chạy song song cả 2 search
+    final results = await Future.wait([
+      MenuItemModel.search(q),
+      RestaurantModel.search(q),
+    ]);
 
     if (mounted) {
       setState(() {
-        _searchResults = results;
+        _foodResults = results[0] as List<MenuItemModel>;
+        _restaurantResults = results[1] as List<RestaurantModel>;
         _isLoading = false;
       });
     }
@@ -64,7 +86,8 @@ class _SearchViewState extends State<SearchView> {
     _debounce?.cancel();
     _txtSearch.clear();
     setState(() {
-      _searchResults = [];
+      _foodResults = [];
+      _restaurantResults = [];
       _isLoading = false;
     });
   }
@@ -157,7 +180,7 @@ class _SearchViewState extends State<SearchView> {
                   if (queryEmpty) {
                     return Center(
                       child: Text(
-                        "Nhập tên món ăn để tìm kiếm",
+                        "Nhập tên nhà hàng hoặc món ăn",
                         style: TextStyle(color: TColor.placeholder, fontSize: 16),
                       ),
                     );
@@ -165,95 +188,42 @@ class _SearchViewState extends State<SearchView> {
                   if (_isLoading) {
                     return const Center(child: CircularProgressIndicator());
                   }
-                  if (_searchResults.isEmpty) {
+                  if (_foodResults.isEmpty && _restaurantResults.isEmpty) {
                     return Center(
                       child: Text(
-                        "Không tìm thấy món nào",
+                        "Không tìm thấy kết quả nào",
                         style: TextStyle(color: TColor.primaryText, fontSize: 16),
                       ),
                     );
                   }
-                  return ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    itemCount: _searchResults.length,
-                    separatorBuilder: (context, index) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final item = _searchResults[index];
-                      return ListTile(
-                        contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                        leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: SizedBox(
-                            width: 50,
-                            height: 50,
-                            child: SmartImage(
-                              item.imageUrl.trim().isNotEmpty
-                                  ? item.imageUrl.trim()
-                                  : 'https://picsum.photos/seed/${item.id}/200/200',
-                              width: 50,
-                              height: 50,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => ColoredBox(
-                                color: TColor.textfield,
-                                child: Center(
-                                  child: Text(
-                                    item.emoji,
-                                    style: const TextStyle(fontSize: 24),
-                                  ),
-                                ),
-                              ),
-                            ),
+                  
+                  return CustomScrollView(
+                    slivers: [
+                      if (_restaurantResults.isNotEmpty) ...[
+                        _buildSectionHeader("Nhà hàng"),
+                        SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              final res = _restaurantResults[index];
+                              return _buildRestaurantTile(res);
+                            },
+                            childCount: _restaurantResults.length,
                           ),
                         ),
-                        title: Text(
-                          item.name,
-                          style: TextStyle(
-                            color: TColor.primaryText,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
+                      ],
+                      if (_foodResults.isNotEmpty) ...[
+                        _buildSectionHeader("Món ăn"),
+                        SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              final item = _foodResults[index];
+                              return _buildFoodTile(item, currencyFormatter);
+                            },
+                            childCount: _foodResults.length,
                           ),
                         ),
-                        subtitle: Text(
-                          item.category,
-                          style: TextStyle(color: TColor.secondaryText, fontSize: 13),
-                        ),
-                        trailing: Text(
-                          currencyFormatter.format(item.price),
-                          style: TextStyle(
-                            color: TColor.primary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        onTap: () {
-                          FocusScope.of(context).unfocus();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ItemDetailView(
-                                itemObj: {
-                                  "id": item.id,
-                                  "restaurant_id": item.restaurantId,
-                                  "restaurant_name": "",
-                                  "name": item.name,
-                                  "price": item.price.toStringAsFixed(0),
-                                  "image": item.imageUrl.isNotEmpty
-                                      ? item.imageUrl
-                                      : 'https://picsum.photos/seed/${item.id}/400/400',
-                                  "category": item.category,
-                                  "emoji": item.emoji,
-                                  "description": item.description,
-                                  "type": item.category,
-                                  "food_type": item.category,
-                                  "rate": "4.9",
-                                  "rating": "124",
-                                },
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    },
+                      ],
+                    ],
                   );
                 },
               ),
@@ -261,6 +231,75 @@ class _SearchViewState extends State<SearchView> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+        child: Text(
+          title,
+          style: TextStyle(
+            color: TColor.primaryText,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRestaurantTile(RestaurantModel res) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      leading: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: SmartImage(
+          res.imageUrl.isNotEmpty ? res.imageUrl : 'https://picsum.photos/seed/${res.id}/200/200',
+          width: 50, height: 50, fit: BoxFit.cover,
+        ),
+      ),
+      title: Text(res.name, style: TextStyle(color: TColor.primaryText, fontWeight: FontWeight.w700)),
+      subtitle: Text(res.type1, style: TextStyle(color: TColor.secondaryText, fontSize: 13)),
+      trailing: Icon(Icons.arrow_forward_ios, size: 14, color: TColor.placeholder),
+      onTap: () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => RestaurantDetailView(restaurant: res)));
+      },
+    );
+  }
+
+  Widget _buildFoodTile(MenuItemModel item, NumberFormat currencyFormatter) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      leading: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: SmartImage(
+          item.imageUrl.isNotEmpty ? item.imageUrl : 'https://picsum.photos/seed/${item.id}/200/200',
+          width: 50, height: 50, fit: BoxFit.cover,
+        ),
+      ),
+      title: Text(item.name, style: TextStyle(color: TColor.primaryText, fontWeight: FontWeight.w700)),
+      subtitle: Text(item.category, style: TextStyle(color: TColor.secondaryText, fontSize: 13)),
+      trailing: Text(currencyFormatter.format(item.price), style: TextStyle(color: TColor.primary, fontWeight: FontWeight.bold)),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ItemDetailView(
+              itemObj: {
+                "id": item.id,
+                "restaurant_id": item.restaurantId,
+                "name": item.name,
+                "price": item.price.toStringAsFixed(0),
+                "image": item.imageUrl,
+                "description": item.description,
+                "category": item.category,
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 }

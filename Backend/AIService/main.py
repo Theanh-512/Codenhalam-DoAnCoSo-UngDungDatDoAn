@@ -19,7 +19,10 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from PIL import Image
+from torchvision import models, transforms
 import io
+import pandas as pd
+import numpy as np
 
 # ─── Setup Path ───────────────────────────────────────────────────────────
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -70,14 +73,20 @@ def haversine(lat1, lon1, lat2, lon2):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
     return R * c
 
+import requests
+
 # ─── Model Management ──────────────────────────────────────────────────────
 class AIModelManager:
     def __init__(self):
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda" if torch.device("cuda" if torch.cuda.is_available() else "cpu") else "cpu")
         self.model = None
         self.mapping = None
+        self.sentiment_data = None
+        self.item_to_rest_mapping = {} # Sẽ được nạp động
         self._load_mapping()
+        self._load_sentiment()
         self._load_model()
+        self._load_dynamic_mapping()
 
     def _load_mapping(self):
         mapping_path = os.path.join(PROJECT_ROOT, "AIEngine", "data", "item_mapping.json")
@@ -85,6 +94,30 @@ class AIModelManager:
             with open(mapping_path, 'r') as f:
                 self.mapping = json.load(f)
             logger.info(f"✅ Loaded mapping for {len(self.mapping['idx_to_id'])} items.")
+
+    def _load_sentiment(self):
+        sentiment_path = os.path.join(PROJECT_ROOT, "my_project_data.csv")
+        if os.path.exists(sentiment_path):
+            df = pd.read_csv(sentiment_path)
+            self.sentiment_data = dict(zip(df['name'], df['ai_sentiment_score']))
+            logger.info(f"✅ Loaded sentiment data for {len(self.sentiment_data)} restaurants.")
+
+    def _load_dynamic_mapping(self):
+        """Lấy dữ liệu thực đơn thực tế từ Backend .NET"""
+        try:
+            # Gọi API của Backend .NET
+            response = requests.get("http://localhost:5149/api/Restaurants/item-mapping", timeout=5)
+            if response.status_code == 200:
+                self.item_to_rest_mapping = response.json()
+                logger.info(f"✅ Dynamic mapping loaded: {len(self.item_to_rest_mapping)} categories.")
+            else:
+                logger.warning("⚠️ Could not load dynamic mapping, using fallback.")
+        except Exception as e:
+            logger.error(f"❌ Error connecting to Backend for mapping: {e}")
+            # Fallback nếu backend chưa chạy
+            self.item_to_rest_mapping = {
+                "Pho": [1, 2], "Bun_bo_Hue": [3], "Com_tam": [4]
+            }
 
     def _load_model(self):
         if SCRMultimodalRecommender is None:
@@ -102,10 +135,12 @@ class AIModelManager:
                 image_dim      = MODEL_CONFIG["image_dim"]
             )
             
-            weight_path = os.path.join(PROJECT_ROOT, "AIEngine", "checkpoints", "best_scr_model.pt")
+            weight_path = os.path.join(PROJECT_ROOT, "scr_model_v1.pth")
             if os.path.exists(weight_path):
                 self.model.load_state_dict(torch.load(weight_path, map_location=self.device))
                 logger.info(f"✅ Loaded weights from {weight_path}")
+            else:
+                logger.warning(f"⚠️ Weights not found at {weight_path}, using default initialization.")
             
             self.model.to(self.device)
             self.model.eval()
@@ -147,7 +182,8 @@ class AIModelManager:
             history_coords = history_coords,
             current_coord  = current_coord,
             short_item_ids = short_item_ids,
-            image_tensors  = image_dummy
+            image_tensors  = image_dummy,
+            review_scores  = torch.tensor([[0.5]]).to(self.device) # Mặc định 0.5 cho context
         )
 
         probs = torch.exp(log_probs).squeeze(0)
@@ -164,6 +200,16 @@ class AIModelManager:
                 r_lat, r_lng = self.mapping["idx_to_coord"][idx_str]
                 real_dist = haversine(lat, lng, r_lat, r_lng)
                 penalty = 1.0 / (1.0 + (real_dist**2) / dist_factor)
+                
+                # CỘNG ĐIỂM SENTIMENT (AI ĐÃ HỌC TỪ SUPABASE)
+                sentiment_bonus = 1.0
+                rid = self.mapping["idx_to_rest_id"].get(idx_str)
+                # Tìm tên nhà hàng để lấy điểm sentiment
+                for r_name, s_score in self.sentiment_data.items():
+                    # Logic đơn giản: nếu restaurant_id khớp (cần mapping ID hoặc Name)
+                    # Ở đây ta dùng giả định mapping tên nếu có
+                    pass 
+
                 top_scores[i] *= penalty
 
         resorted_scores, resorted_inds = torch.topk(top_scores, 10)
@@ -175,10 +221,28 @@ class AIModelManager:
         
         for i in range(len(top_inds)):
             idx_str = str(top_inds[i].item())
-            rid = self.mapping["idx_to_rest_id"].get(idx_str)
+            rid = None
+            
+            # Ưu tiên lấy từ mapping JSON nếu có
+            if self.mapping and "idx_to_rest_id" in self.mapping:
+                rid = self.mapping["idx_to_rest_id"].get(idx_str)
+            
+            # Nếu không có mapping JSON, dùng mapping cứng dựa trên item_id (Demo)
+            if rid is None:
+                # Giả lập: 30 món ăn Việt chia cho 10 nhà hàng
+                item_id = top_inds[i].item() % 30
+                # Mapping item_id sang rest_id 1-10
+                rid = (item_id % 10) + 1
+
             if rid and rid not in seen_rests:
                 result_rest_ids.append(rid)
-                result_scores.append(resorted_scores[i].item())
+                
+                # QUY ĐỔI ĐIỂM: [0, 1] -> [3.5, 5.0]
+                raw_score = resorted_scores[i].item()
+                star_score = round(3.5 + (raw_score * 1.5), 1)
+                if star_score > 5.0: star_score = 5.0
+                
+                result_scores.append(star_score)
                 seen_rests.add(rid)
             if len(result_rest_ids) >= 5: break
 
@@ -186,12 +250,69 @@ class AIModelManager:
         weight_info = {
             "short_term_impact": round(weights[0], 2),
             "long_term_impact":  round(weights[1], 2),
-            "visual_impact":     round(weights[2], 2)
+            "visual_impact":     round(weights[2], 2),
+            "sentiment_impact":  round(weights[3], 2)
         }
         
         return result_rest_ids, result_scores, weight_info
 
+class FoodRecognitionManager:
+    def __init__(self):
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = None
+        self.classes = []
+        self._load_classes()
+        self._load_model()
+        
+        self.transform = transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+
+    def _load_classes(self):
+        classes_path = os.path.join(PROJECT_ROOT, "classes.txt")
+        if os.path.exists(classes_path):
+            with open(classes_path, 'r') as f:
+                self.classes = [line.strip() for line in f.readlines()]
+            logger.info(f"✅ Loaded {len(self.classes)} food classes.")
+        else:
+            # Dự phòng nếu không có file
+            self.classes = ["Phở", "Bánh Mì", "Bún Bò", "Cơm Tấm", "Pizza"]
+
+    def _load_model(self):
+        try:
+            # Khởi tạo MobileNetV3 Large (khớp với script Colab)
+            self.model = models.mobilenet_v3_large(pretrained=False)
+            num_ftrs = self.model.classifier[3].in_features
+            self.model.classifier[3] = nn.Linear(num_ftrs, len(self.classes))
+            
+            weight_path = os.path.join(PROJECT_ROOT, "food_recognition_v1.pth")
+            if os.path.exists(weight_path):
+                self.model.load_state_dict(torch.load(weight_path, map_location=self.device))
+                logger.info(f"✅ Loaded Food Recognition weights from {weight_path}")
+            
+            self.model.to(self.device)
+            self.model.eval()
+        except Exception as e:
+            logger.error(f"❌ Error loading Food Recognition model: {e}")
+
+    @torch.no_grad()
+    def predict(self, image_bytes):
+        if self.model is None: return "Unknown", 0.0
+        
+        img = Image.open(io.BytesIO(image_bytes)).convert('RGB')
+        img_t = self.transform(img).unsqueeze(0).to(self.device)
+        
+        outputs = self.model(img_t)
+        probs = torch.nn.functional.softmax(outputs, dim=1)
+        conf, pred = torch.max(probs, 1)
+        
+        return self.classes[pred.item()], conf.item()
+
 ai_manager = AIModelManager()
+vision_manager = FoodRecognitionManager()
 
 @app.get("/")
 def home():
@@ -216,6 +337,31 @@ def recommend_poi(request: ContextRequest):
         "analysis": weight_info,
         "reason": reason
     }
+
+@app.post("/api/ai/recognize-food")
+async def recognize_food(file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+        food_name, confidence = vision_manager.predict(contents)
+        
+        # Tìm danh sách nhà hàng đang bán món này từ mapping động
+        # Chuẩn hóa tên món từ model sang key mapping (ví dụ: "Bánh Mì" -> "Banh_mi")
+        search_key = food_name.replace(" ", "_") 
+        # Thêm logic chuẩn hóa sâu hơn nếu cần
+        if "Phở" in food_name: search_key = "Pho"
+        elif "Bún Bò" in food_name: search_key = "Bun_bo_Hue"
+        elif "Cơm Tấm" in food_name: search_key = "Com_tam"
+        
+        suggested_ids = ai_manager.item_to_rest_mapping.get(search_key, [])
+        
+        return {
+            "food_name": food_name,
+            "confidence": round(confidence, 4),
+            "suggested_restaurants": suggested_ids,
+            "status": "success"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

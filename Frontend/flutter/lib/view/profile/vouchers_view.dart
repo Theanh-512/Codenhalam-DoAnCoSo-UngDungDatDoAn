@@ -6,26 +6,26 @@ class VouchersView extends StatelessWidget {
   const VouchersView({super.key});
 
   static final _items = [
-    _DiscountCoupon(
+    const _DiscountCoupon(
       'FREESHIP',
       'Miễn phí ship',
       'Đơn từ 99.000đ',
       'Còn 7 ngày',
-      const Color(0xFF2E7D32),
+      Color(0xFF2E7D32),
     ),
-    _DiscountCoupon(
+    const _DiscountCoupon(
       'GIAM20K',
       'Giảm 20.000đ',
       'Đơn từ 150.000đ',
       'Còn 14 ngày',
-      const Color(0xFF1565C0),
+      Color(0xFF1565C0),
     ),
-    _DiscountCoupon(
+    const _DiscountCoupon(
       'MONKEY10',
       'Giảm 10%',
       'Tối đa 30.000đ',
       'Hết hạn sau Tết',
-      const Color(0xFFEF6C00),
+      Color(0xFFEF6C00),
     ),
   ];
 
@@ -134,7 +134,8 @@ class VouchersView extends StatelessWidget {
 }
 
 class _DiscountCoupon {
-  const _DiscountCoupon(this.code, this.title, this.rule, this.expiry, this.accent);
+  const _DiscountCoupon(
+      this.code, this.title, this.rule, this.expiry, this.accent);
   final String code;
   final String title;
   final String rule;

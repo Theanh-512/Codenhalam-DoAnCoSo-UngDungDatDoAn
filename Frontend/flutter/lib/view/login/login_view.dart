@@ -204,7 +204,6 @@ class _LoginViewState extends State<LoginView> {
                   color: TColor.primaryText,
                 ),
               ),
-
               Text(
                 "Add your details to login",
                 style: TextStyle(
@@ -214,13 +213,11 @@ class _LoginViewState extends State<LoginView> {
                 ),
               ),
               const SizedBox(height: 35),
-
               RoundTextfield(
                 hintText: "Your Email",
                 controller: txtEmail,
                 keyboardType: TextInputType.emailAddress,
               ),
-
               const SizedBox(height: 25),
               RoundTextfield(
                 hintText: "Password",
@@ -229,7 +226,6 @@ class _LoginViewState extends State<LoginView> {
               ),
               const SizedBox(height: 25),
               RoundButton(title: "Login", onPressed: _login),
-
               const SizedBox(height: 25),
               TextButton(
                 onPressed: () {
@@ -249,7 +245,7 @@ class _LoginViewState extends State<LoginView> {
                   ),
                 ),
               ),
-              SizedBox(height: 15),
+              const SizedBox(height: 15),
               Text(
                 "or login with",
                 style: TextStyle(
@@ -258,7 +254,7 @@ class _LoginViewState extends State<LoginView> {
                   color: TColor.secondaryText,
                 ),
               ),
-              SizedBox(height: 35),
+              const SizedBox(height: 35),
               _socialLoginButton(
                 title: "Login with Facebook",
                 iconAsset: "assets/img/facebook_logo.png",
@@ -272,15 +268,13 @@ class _LoginViewState extends State<LoginView> {
                     if (!context.mounted) return;
 
                     if (result.status == LoginStatus.success) {
-                      final userData =
-                          await FacebookAuth.instance.getUserData(
+                      final userData = await FacebookAuth.instance.getUserData(
                         fields: 'id,name,picture.width(200)',
                       );
                       if (!context.mounted) return;
                       await _handleSocialLogin(
                         'facebook',
-                        userData['email'] ??
-                            "${userData['id']}@facebook.com",
+                        userData['email'] ?? "${userData['id']}@facebook.com",
                         userData['name'] ?? 'Facebook User',
                         userData['id'] ?? '',
                       );
@@ -305,9 +299,7 @@ class _LoginViewState extends State<LoginView> {
                   }
                 },
               ),
-
-              SizedBox(height: 25),
-
+              const SizedBox(height: 25),
               _socialLoginButton(
                 title: "Login with Google",
                 iconAsset: "assets/img/google_logo.png",
@@ -336,9 +328,7 @@ class _LoginViewState extends State<LoginView> {
                   }
                 },
               ),
-
-              SizedBox(height: 30),
-
+              const SizedBox(height: 30),
               TextButton(
                 onPressed: () {
                   Navigator.push(

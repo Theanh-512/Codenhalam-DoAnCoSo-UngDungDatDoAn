@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_food_app/view/admin/admin_menu_items_view.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:flutter_food_app/common/auth_store.dart';
@@ -266,6 +267,17 @@ class _AdminRestaurantsViewState extends State<AdminRestaurantsView> {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
                         child: ListTile(
+                          onTap: () {
+                            Navigator.push<void>(
+                              context,
+                              MaterialPageRoute<void>(
+                                builder: (_) => AdminMenuItemsView(
+                                  restaurantId: id,
+                                  restaurantName: r['name']?.toString(),
+                                ),
+                              ),
+                            );
+                          },
                           leading: ClipRRect(
                             borderRadius: BorderRadius.circular(8),
                             child: SizedBox(

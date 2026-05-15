@@ -11,6 +11,7 @@ import 'package:flutter_food_app/view/profile/help_center_view.dart';
 import 'package:flutter_food_app/view/profile/order_history_view.dart';
 import 'package:flutter_food_app/view/profile/payment_methods_view.dart';
 import 'package:flutter_food_app/view/profile/vouchers_view.dart';
+import 'package:flutter_food_app/view/admin/admin_home_view.dart';
 
 class ProfileView extends StatefulWidget {
   const ProfileView({super.key});
@@ -205,6 +206,25 @@ class _ProfileViewState extends State<ProfileView> {
                             color: Colors.white.withValues(alpha: 0.8),
                           ),
                         ),
+                      const SizedBox(height: 8),
+                      if (userData?['userRole'] != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
+                          ),
+                          child: Text(
+                            (userData!['userRole'] as String).toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ),
                       const SizedBox(height: 24),
                     ],
                   ),
@@ -314,6 +334,20 @@ class _ProfileViewState extends State<ProfileView> {
                           ),
                           child: Column(
                             children: [
+                              if (userData?['userRole']?.toString().toLowerCase() == 'admin') ...[
+                                _buildActionMenu(
+                                  Icons.admin_panel_settings_outlined,
+                                  'Quản trị hệ thống',
+                                  subtitle: 'Quản lý nhà hàng, món ăn, đơn hàng',
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const AdminHomeView(),
+                                    ),
+                                  ),
+                                ),
+                                _buildDividerLine(),
+                              ],
                               _buildActionMenu(Icons.receipt_long_outlined,
                                   'Lịch sử đơn hàng',
                                   subtitle: '12 đơn hàng gần đây',

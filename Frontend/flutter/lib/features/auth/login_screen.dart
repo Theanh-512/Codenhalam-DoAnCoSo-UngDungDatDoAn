@@ -35,14 +35,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final response = await apiService.login(email, password);
       
       // Save user info
+      debugPrint("Login Response: $response");
+      final role = (response['userRole'] ?? response['userrole'] ?? 'User').toString();
+      
       ref.read(authProvider.notifier).login(
         response['id'] ?? 0, 
         response['email'] ?? email, 
-        response['fullName'] ?? ''
+        response['fullName'] ?? '',
+        userRole: role,
       );
 
       if (mounted) {
-        if (email == 'admin@foodapp.com') {
+        if (role == 'Admin') {
+          // You can redirect to AdminDashboardScreen or just MainTabScreen 
+          // where Profile will show Admin entry. 
+          // The user specifically asked to "tạo tài khoản admin" 
+          // so I'll redirect them to the Admin dashboard directly if they are admin.
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
           );
@@ -121,7 +129,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Gợi ý: test1@gmail.com / 123456',
+              'Gợi ý Admin: admin@gmail.com / Admin@123\nGợi ý User: test1@gmail.com / 123456',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey, fontSize: 12),
             ),

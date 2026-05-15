@@ -32,7 +32,10 @@ namespace API.Controllers
 
             // Search in Restaurants
             var restaurants = await _context.Restaurants
-                .Where(r => EF.Functions.ILike(r.Name, $"%{q}%") || EF.Functions.ILike(r.Description ?? "", $"%{q}%"))
+                .Where(r => EF.Functions.ILike(r.Name, $"%{q}%") 
+                    || EF.Functions.ILike(r.Description ?? "", $"%{q}%")
+                    || EF.Functions.ILike(r.Type1 ?? "", $"%{q}%")
+                    || EF.Functions.ILike(r.Type2 ?? "", $"%{q}%"))
                 .Take(20)
                 .ToListAsync();
 

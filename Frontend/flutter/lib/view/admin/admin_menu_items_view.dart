@@ -9,7 +9,10 @@ import 'package:flutter_food_app/common/globs.dart';
 import 'package:flutter_food_app/common/smart_image.dart';
 
 class AdminMenuItemsView extends StatefulWidget {
-  const AdminMenuItemsView({super.key});
+  final String? restaurantId;
+  final String? restaurantName;
+
+  const AdminMenuItemsView({super.key, this.restaurantId, this.restaurantName});
 
   @override
   State<AdminMenuItemsView> createState() => _AdminMenuItemsViewState();
@@ -25,6 +28,7 @@ class _AdminMenuItemsViewState extends State<AdminMenuItemsView> {
   @override
   void initState() {
     super.initState();
+    _filterRestaurantId = widget.restaurantId;
     _loadRestaurants();
   }
 
@@ -44,8 +48,12 @@ class _AdminMenuItemsViewState extends State<AdminMenuItemsView> {
       }
       final list = jsonDecode(res.body);
       _restaurants = list is List ? list : [];
-      _filterRestaurantId ??=
-          _restaurants.isNotEmpty ? (_restaurants.first as Map)['id']?.toString() : null;
+      
+      // If we don't have a passed restaurantId, pick the first one
+      if (_filterRestaurantId == null && _restaurants.isNotEmpty) {
+        _filterRestaurantId = (_restaurants.first as Map)['id']?.toString();
+      }
+      
       await _loadItems();
     } catch (e) {
       setState(() {
@@ -58,8 +66,8 @@ class _AdminMenuItemsViewState extends State<AdminMenuItemsView> {
   Future<void> _loadItems() async {
     try {
       final url = _filterRestaurantId != null && _filterRestaurantId!.isNotEmpty
-          ? '${Globs.itemsUrl}?restaurantId=${Uri.encodeQueryComponent(_filterRestaurantId!)}'
-          : Globs.itemsUrl;
+          ? '${Globs.adminItemsUrl}?restaurantId=${Uri.encodeQueryComponent(_filterRestaurantId!)}'
+          : Globs.adminItemsUrl;
       final res = await http.get(Uri.parse(url));
       if (res.statusCode != 200) {
         setState(() {
@@ -94,10 +102,9 @@ class _AdminMenuItemsViewState extends State<AdminMenuItemsView> {
     );
     if (ok != true) return;
     try {
-      final h = await AuthStore.authHeaders(jsonContent: false);
-      final res = await http.delete(Uri.parse(Globs.adminItemUrl(id)), headers: h);
+      final res = await http.delete(Uri.parse(Globs.adminItemUrl(id)));
       if (!mounted) return;
-      if (res.statusCode != 200) {
+      if (res.statusCode != 200 && res.statusCode != 204) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(Globs.apiErrorMessage(res.body))),
         );
@@ -112,16 +119,15 @@ class _AdminMenuItemsViewState extends State<AdminMenuItemsView> {
   }
 
   Future<void> _editOrCreate([Map<String, dynamic>? existing]) async {
-    final idCtrl = TextEditingController(text: existing?['id']?.toString() ?? '');
+    final idCtrl = TextEditingController(text: existing?['id']?.toString() ?? '0');
     final ridCtrl = TextEditingController(
-      text: existing?['restaurant_id']?.toString() ?? _filterRestaurantId ?? '',
+      text: existing?['restaurantId']?.toString() ?? _filterRestaurantId ?? '',
     );
     final nameCtrl = TextEditingController(text: existing?['name']?.toString() ?? '');
     final descCtrl = TextEditingController(text: existing?['description']?.toString() ?? '');
     final priceCtrl = TextEditingController(text: existing?['price']?.toString() ?? '0');
-    final catCtrl = TextEditingController(text: existing?['category']?.toString() ?? '');
-    final emojiCtrl = TextEditingController(text: existing?['emoji']?.toString() ?? '🍽️');
-    final imgCtrl = TextEditingController(text: existing?['image']?.toString() ?? '');
+    final catIdCtrl = TextEditingController(text: existing?['categoryId']?.toString() ?? '1');
+    final imgCtrl = TextEditingController(text: existing?['imageUrl']?.toString() ?? '');
     var best = existing?['is_best_seller'] == true;
 
     final created = await showDialog<bool>(
@@ -135,14 +141,15 @@ class _AdminMenuItemsViewState extends State<AdminMenuItemsView> {
               children: [
                 TextField(
                   controller: idCtrl,
-                  decoration: const InputDecoration(labelText: 'ID món (vd: m99)'),
-                  enabled: existing == null,
+                  decoration: const InputDecoration(labelText: 'ID (Tự động nếu là 0)'),
+                  enabled: false,
                 ),
                 TextField(
                   controller: ridCtrl,
-                  decoration: const InputDecoration(labelText: 'ID nhà hàng (vd: r1)'),
+                  decoration: const InputDecoration(labelText: 'ID nhà hàng'),
+                  enabled: false,
                 ),
-                TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Tên')),
+                TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Tên món')),
                 TextField(
                   controller: descCtrl,
                   decoration: const InputDecoration(labelText: 'Mô tả'),
@@ -153,14 +160,12 @@ class _AdminMenuItemsViewState extends State<AdminMenuItemsView> {
                   decoration: const InputDecoration(labelText: 'Giá (VNĐ)'),
                   keyboardType: TextInputType.number,
                 ),
-                TextField(controller: catCtrl, decoration: const InputDecoration(labelText: 'Danh mục món')),
-                TextField(controller: emojiCtrl, decoration: const InputDecoration(labelText: 'Emoji')),
-                TextField(controller: imgCtrl, decoration: const InputDecoration(labelText: 'URL ảnh (tuỳ chọn)')),
-                CheckboxListTile(
-                  title: const Text('Bán chạy'),
-                  value: best,
-                  onChanged: (v) => setSt(() => best = v ?? false),
+                TextField(
+                  controller: catIdCtrl, 
+                  decoration: const InputDecoration(labelText: 'ID danh mục (vd: 1-Phở, 2-Pizza)'),
+                  keyboardType: TextInputType.number,
                 ),
+                TextField(controller: imgCtrl, decoration: const InputDecoration(labelText: 'URL ảnh')),
               ],
             ),
           ),
@@ -173,46 +178,46 @@ class _AdminMenuItemsViewState extends State<AdminMenuItemsView> {
     );
     if (created != true) return;
 
-    final mid = idCtrl.text.trim();
-    final rid = ridCtrl.text.trim();
-    if (mid.isEmpty || rid.isEmpty || nameCtrl.text.trim().isEmpty) {
+    final rid = int.tryParse(ridCtrl.text) ?? 0;
+    if (nameCtrl.text.trim().isEmpty || rid == 0) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Thiếu id, nhà hàng hoặc tên')),
+          const SnackBar(content: Text('Vui lòng nhập tên món và ID nhà hàng hợp lệ')),
         );
       }
       return;
     }
 
     try {
-      final h = await AuthStore.authHeaders(jsonContent: true);
       final body = {
-        'id': mid,
-        'restaurant_id': rid,
+        'id': int.tryParse(idCtrl.text) ?? 0,
+        'restaurantId': rid,
+        'categoryId': int.tryParse(catIdCtrl.text) ?? 1,
         'name': nameCtrl.text.trim(),
         'description': descCtrl.text.trim(),
         'price': double.tryParse(priceCtrl.text.trim()) ?? 0,
-        'category': catCtrl.text.trim(),
-        'emoji': emojiCtrl.text.trim(),
-        'image': imgCtrl.text.trim(),
-        'is_best_seller': best,
+        'imageUrl': imgCtrl.text.trim(),
+        'rating': existing?['rating'] ?? 5.0,
+        'isAvailable': true,
       };
+      
       http.Response res;
       if (existing == null) {
         res = await http.post(
           Uri.parse(Globs.adminItemsUrl),
-          headers: h,
+          headers: {"Content-Type": "application/json"},
           body: jsonEncode(body),
         );
       } else {
         res = await http.put(
-          Uri.parse(Globs.adminItemUrl(mid)),
-          headers: h,
+          Uri.parse(Globs.adminItemUrl(idCtrl.text)),
+          headers: {"Content-Type": "application/json"},
           body: jsonEncode(body),
         );
       }
+      
       if (!mounted) return;
-      if (res.statusCode != 200 && res.statusCode != 201) {
+      if (res.statusCode != 200 && res.statusCode != 201 && res.statusCode != 204) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(Globs.apiErrorMessage(res.body))),
         );
@@ -231,7 +236,7 @@ class _AdminMenuItemsViewState extends State<AdminMenuItemsView> {
     return Scaffold(
       backgroundColor: const Color(0xfff5f5f5),
       appBar: AppBar(
-        title: const Text('Món ăn'),
+        title: Text(widget.restaurantName != null ? 'Menu: ${widget.restaurantName}' : 'Món ăn'),
         backgroundColor: Colors.white,
         foregroundColor: TColor.primaryText,
         elevation: 0,
@@ -254,14 +259,14 @@ class _AdminMenuItemsViewState extends State<AdminMenuItemsView> {
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                       child: DropdownButtonFormField<String>(
                         decoration: const InputDecoration(
-                          labelText: 'Lọc theo nhà hàng',
+                          labelText: 'Chọn nhà hàng để quản lý thực đơn',
                           filled: true,
                           fillColor: Colors.white,
                         ),
                         value: _filterRestaurantId != null &&
-                                _restaurants.any(
-                                  (e) => (e as Map)['id']?.toString() == _filterRestaurantId,
-                                )
+                                 _restaurants.any(
+                                   (e) => (e as Map)['id']?.toString() == _filterRestaurantId,
+                                 )
                             ? _filterRestaurantId
                             : null,
                         items: _restaurants.map((e) {
@@ -290,7 +295,7 @@ class _AdminMenuItemsViewState extends State<AdminMenuItemsView> {
                           itemBuilder: (context, i) {
                             final r = _items[i] as Map<String, dynamic>;
                             final id = r['id']?.toString() ?? '';
-                            final img = r['image']?.toString() ?? '';
+                            final img = r['imageUrl']?.toString() ?? '';
                             return Material(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(12),
@@ -307,11 +312,8 @@ class _AdminMenuItemsViewState extends State<AdminMenuItemsView> {
                                       width: 48,
                                       height: 48,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Center(
-                                        child: Text(
-                                          r['emoji']?.toString() ?? '🍽️',
-                                          style: const TextStyle(fontSize: 22),
-                                        ),
+                                      errorBuilder: (_, __, ___) => const Center(
+                                        child: Icon(Icons.restaurant, size: 24),
                                       ),
                                     ),
                                   ),
@@ -324,7 +326,7 @@ class _AdminMenuItemsViewState extends State<AdminMenuItemsView> {
                                   ),
                                 ),
                                 subtitle: Text(
-                                  '${r['price']} đ · ${r['category'] ?? ''}',
+                                  '${r['price']} đ · Danh mục ID: ${r['categoryId'] ?? ''}',
                                   style: TextStyle(color: TColor.secondaryText, fontSize: 12),
                                 ),
                                 trailing: Row(

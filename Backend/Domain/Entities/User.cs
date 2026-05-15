@@ -9,6 +9,7 @@ namespace Domain.Entities
         public string FullName { get; set; } = string.Empty;
         public string PhoneNumber { get; set; } = string.Empty;
         public string Address { get; set; } = string.Empty;
+        public string UserRole { get; set; } = "User";
         
         // For AI/Location tracking
         public double? LastLatitude { get; set; }

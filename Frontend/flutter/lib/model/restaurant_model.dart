@@ -34,31 +34,38 @@ class RestaurantModel {
   });
 
   factory RestaurantModel.fromJson(Map<String, dynamic> json) {
-    final type1 = (json['type1'] ?? json['description'] ?? '').toString();
-    final open = json['isOpen'] ?? json['is_open'] ?? json['isActive'];
-    final isOpen = open == null
-        ? true
-        : (open == true || open == 1 || open == '1' || open == 'true');
-    final dRaw = json['distanceKm'] ?? json['distance_km'];
+    // Xử lý linh hoạt PascalCase và camelCase từ .NET
+    final name = (json['name'] ?? json['Name'] ?? '').toString();
+    final id = (json['id'] ?? json['Id'] ?? '').toString();
+    final type1 = (json['type1'] ?? json['Type1'] ?? json['description'] ?? json['Description'] ?? '').toString();
+    final img = (json['imageUrl'] ?? json['ImageUrl'] ?? json['image'] ?? json['Image'] ?? '').toString();
+    
+    final ratingRaw = json['rating'] ?? json['Rating'];
+    final revRaw = json['reviewCount'] ?? json['ReviewCount'] ?? json['review_count'] ?? json['Review_count'];
+
+    final open = json['isOpen'] ?? json['IsOpen'] ?? json['isActive'] ?? json['IsActive'];
+    final isOpen = open == null ? true : (open == true || open == 1 || open == '1' || open == 'true');
+    
+    final dRaw = json['distanceKm'] ?? json['DistanceKm'] ?? json['distance_km'];
     double? dkm;
     if (dRaw != null) {
       dkm = double.tryParse(dRaw.toString());
     }
+
     return RestaurantModel(
-      id: json['id']?.toString() ?? '',
-      name: json['name'] ?? '',
+      id: id,
+      name: name,
       type1: type1,
-      type2: json['type2']?.toString() ?? '',
-      imageUrl: (json['imageUrl'] ?? json['image'] ?? '').toString(),
-      rating: double.tryParse(json['rating']?.toString() ?? '') ?? 
-              (4.0 + (json['id'].hashCode % 10) / 10.0), // Mock đa dạng 4.0-5.0
-      reviewCount: int.tryParse(json['reviewCount']?.toString() ?? json['review_count']?.toString() ?? '') ?? 
-              (50 + (json['id'].hashCode % 450)), // Mock 50-500
-      category: json['category']?.toString() ?? type1,
+      type2: (json['type2'] ?? json['Type2'] ?? '').toString(),
+      imageUrl: img,
+      rating: double.tryParse(ratingRaw?.toString() ?? '') ?? 
+              (4.0 + (id.hashCode % 10) / 10.0),
+      reviewCount: int.tryParse(revRaw?.toString() ?? '') ?? 
+              (50 + (id.hashCode % 450)),
+      category: (json['category'] ?? json['Category'] ?? type1).toString(),
       isOpen: isOpen,
-      deliveryTime: json['deliveryTime']?.toString() ?? json['delivery_time']?.toString() ?? '25–35 phút',
-      deliveryFee: double.tryParse(json['deliveryFee']?.toString() ?? json['delivery_fee']?.toString() ?? '') ??
-          15000,
+      deliveryTime: (json['deliveryTime'] ?? json['DeliveryTime'] ?? '25–35 phút').toString(),
+      deliveryFee: double.tryParse((json['deliveryFee'] ?? json['DeliveryFee'] ?? '15000').toString()) ?? 15000,
       distanceKm: dkm,
     );
   }
@@ -76,13 +83,12 @@ class RestaurantModel {
     return 'Dòng món: $a  ·  Kiểu ẩm thực: $b';
   }
 
-  /// [userLat] / [userLng]: vị trí khách — API tính Haversine và trả `distance_km`.
   static Future<List<RestaurantModel>> fetchAll({
     double? userLat,
     double? userLng,
   }) async {
     try {
-      final base = Uri.parse('${Globs.baseUrl}/api/food/restaurants');
+      final base = Uri.parse(Globs.restaurantsUrl);
       final Uri url;
       if (userLat != null && userLng != null) {
         url = base.replace(queryParameters: {
@@ -96,6 +102,21 @@ class RestaurantModel {
       if (res.statusCode == 200) {
         final List data = jsonDecode(res.body);
         return data.map((e) => RestaurantModel.fromJson(e as Map<String, dynamic>)).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  static Future<List<RestaurantModel>> search(String q) async {
+    try {
+      final url = Uri.parse(Globs.searchUrl).replace(
+        queryParameters: {'q': q},
+      );
+      final res = await http.get(url);
+      if (res.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(res.body);
+        final List restList = data['restaurants'] ?? data['Restaurants'] ?? [];
+        return restList.map((e) => RestaurantModel.fromJson(e as Map<String, dynamic>)).toList();
       }
     } catch (_) {}
     return [];

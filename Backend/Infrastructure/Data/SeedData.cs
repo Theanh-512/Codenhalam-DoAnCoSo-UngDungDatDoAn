@@ -22,8 +22,8 @@ namespace Infrastructure.Data
             {
                 var users = new List<User>
                 {
-                    new User { Email = "admin@foodapp.com", FullName = "Admin Hệ Thống", PasswordHash = "123456", PhoneNumber = "0999999999", CreatedDate = System.DateTime.UtcNow },
-                    new User { Email = "test1@gmail.com", FullName = "Nguyễn Văn A", PasswordHash = "123456", PhoneNumber = "0123456781", CreatedDate = System.DateTime.UtcNow },
+                    new User { Email = "admin@gmail.com", FullName = "Admin Hệ Thống", PasswordHash = "Admin@123", PhoneNumber = "0999999999", UserRole = "Admin", CreatedDate = System.DateTime.UtcNow },
+                    new User { Email = "test1@gmail.com", FullName = "Nguyễn Văn A", PasswordHash = "123456", PhoneNumber = "0123456781", UserRole = "User", CreatedDate = System.DateTime.UtcNow },
                 };
                 context.Users.AddRange(users);
                 await context.SaveChangesAsync();

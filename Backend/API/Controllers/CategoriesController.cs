@@ -82,5 +82,25 @@ namespace API.Controllers
             await _context.SaveChangesAsync();
             return NoContent();
         }
+
+        // POST: api/Categories/seed
+        [HttpPost("seed")]
+        public async Task<IActionResult> SeedCategories()
+        {
+            if (await _context.Categories.AnyAsync()) return BadRequest("Categories already exist");
+
+            var categories = new List<Category>
+            {
+                new Category { Name = "Món Chính", Description = "Các món ăn no, chính trong bữa", ImageUrl = "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=200" },
+                new Category { Name = "Khai Vị", Description = "Các món ăn nhẹ đầu bữa", ImageUrl = "https://images.unsplash.com/photo-1541529086526-db283c563270?w=200" },
+                new Category { Name = "Tráng Miệng", Description = "Đồ ngọt, trái cây", ImageUrl = "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=200" },
+                new Category { Name = "Đồ Uống", Description = "Nước giải khát, trà, cafe", ImageUrl = "https://images.unsplash.com/photo-1544145945-f904253d0c7b?w=200" }
+            };
+
+            _context.Categories.AddRange(categories);
+            await _context.SaveChangesAsync();
+
+            return Ok("Đã nạp 4 danh mục thành công!");
+        }
     }
 }

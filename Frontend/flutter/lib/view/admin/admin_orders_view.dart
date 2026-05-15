@@ -88,7 +88,8 @@ class _AdminOrdersViewState extends State<AdminOrdersView> {
       await _load();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
       }
     }
   }
@@ -163,7 +164,13 @@ class _AdminOrdersViewState extends State<AdminOrdersView> {
                                       ),
                                       const Spacer(),
                                       Text(
-                                        '${NumberFormat.currency(locale: 'vi_VN', symbol: 'đ').format((o['total_price'] is num) ? o['total_price'] as num : double.tryParse('${o['total_price']}') ?? 0)}',
+                                        NumberFormat.currency(
+                                                locale: 'vi_VN', symbol: 'đ')
+                                            .format((o['total_price'] is num)
+                                                ? o['total_price'] as num
+                                                : double.tryParse(
+                                                        '${o['total_price']}') ??
+                                                    0),
                                         style: TextStyle(
                                           fontWeight: FontWeight.w700,
                                           color: TColor.primary,
@@ -200,7 +207,8 @@ class _AdminOrdersViewState extends State<AdminOrdersView> {
                                       .isNotEmpty) ...[
                                     const SizedBox(height: 8),
                                     Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Icon(
                                           Icons.location_on_outlined,
@@ -223,8 +231,10 @@ class _AdminOrdersViewState extends State<AdminOrdersView> {
                                   ],
                                   Builder(
                                     builder: (context) {
-                                      final latStr = _coordString(o['delivery_lat']);
-                                      final lngStr = _coordString(o['delivery_lng']);
+                                      final latStr =
+                                          _coordString(o['delivery_lat']);
+                                      final lngStr =
+                                          _coordString(o['delivery_lng']);
                                       if (latStr == null || lngStr == null) {
                                         return const SizedBox.shrink();
                                       }

@@ -12,6 +12,7 @@ import 'package:flutter_food_app/view/home/widget/restaurant_cell.dart';
 import 'package:flutter_food_app/view/map/map_picker_view.dart';
 import 'package:flutter_food_app/view/search/search_view.dart';
 import 'package:flutter_food_app/common/cart_nav.dart';
+import 'package:flutter_food_app/features/home/food_recognition_screen.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -197,10 +198,23 @@ class _HomeViewState extends State<HomeView> {
                   crossAxisSpacing: 15,
                   childAspectRatio: 0.85,
                   children: [
-                    _buildServiceItem(Icons.restaurant, "Đồ ăn", Colors.orange),
-                    _buildServiceItem(Icons.motorcycle, "Xe máy", Colors.green),
-                    _buildServiceItem(Icons.local_shipping, "Giao hàng", Colors.blue),
-                    _buildServiceItem(Icons.more_horiz, "Thêm", Colors.grey),
+                    _buildServiceItem(Icons.restaurant, "Đồ ăn", Colors.orange, () {}),
+                    _buildServiceItem(Icons.auto_awesome, "AI Camera", Colors.deepOrange, () async {
+                      final result = await Navigator.push<String>(
+                        context,
+                        MaterialPageRoute(builder: (context) => const FoodRecognitionScreen()),
+                      );
+                      if (result != null && result.isNotEmpty && mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SearchView(initialQuery: result, autofocus: false),
+                          ),
+                        );
+                      }
+                    }),
+                    _buildServiceItem(Icons.motorcycle, "Xe máy", Colors.green, () {}),
+                    _buildServiceItem(Icons.more_horiz, "Thêm", Colors.grey, () {}),
                   ],
                 ),
               ),
@@ -348,11 +362,9 @@ class _HomeViewState extends State<HomeView> {
       ),
     );
   }
-  Widget _buildServiceItem(IconData icon, String label, Color color) {
+  Widget _buildServiceItem(IconData icon, String label, Color color, VoidCallback onTap) {
     return GestureDetector(
-      onTap: () {
-        // Thao tác cho demo
-      },
+      onTap: onTap,
       child: Column(
         children: [
           Container(

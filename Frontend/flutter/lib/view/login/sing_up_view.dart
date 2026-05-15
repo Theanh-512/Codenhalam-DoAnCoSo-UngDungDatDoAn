@@ -28,12 +28,16 @@ class _SignUpViewState extends State<SignUpView> {
 
   Future<void> _signUp() async {
     if (txtPassword.text != txtConfirmPassword.text) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Mật khẩu không khớp!")));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Mật khẩu không khớp!")));
       return;
     }
-    
-    showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator()));
-    
+
+    showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()));
+
     final url = Uri.parse(Globs.registerUrl);
 
     try {
@@ -47,10 +51,10 @@ class _SignUpViewState extends State<SignUpView> {
           'password': txtPassword.text,
         }),
       );
-      
+
       if (!mounted) return;
       Navigator.of(context, rootNavigator: true).pop();
-      
+
       if (response.statusCode == 200) {
         await AuthStore.saveTokenFromResponseBody(response.body);
         if (!mounted) return;
@@ -73,7 +77,8 @@ class _SignUpViewState extends State<SignUpView> {
         Navigator.of(context, rootNavigator: true).pop();
       }
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Lỗi kết nối server: $e")));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Lỗi kết nối server: $e")));
     }
   }
 
@@ -95,7 +100,6 @@ class _SignUpViewState extends State<SignUpView> {
                   color: TColor.primaryText,
                 ),
               ),
-
               Text(
                 "Add your details to sign up",
                 style: TextStyle(
@@ -107,7 +111,6 @@ class _SignUpViewState extends State<SignUpView> {
               const SizedBox(height: 35),
               RoundTextfield(hintText: "Name", controller: txtName),
               const SizedBox(height: 25),
-
               RoundTextfield(
                 hintText: "Email",
                 controller: txtEmail,
@@ -138,9 +141,7 @@ class _SignUpViewState extends State<SignUpView> {
                 title: "Sign Up",
                 onPressed: _signUp,
               ),
-
-              SizedBox(height: 30),
-
+              const SizedBox(height: 30),
               TextButton(
                 onPressed: () {
                   Navigator.push(

@@ -8,6 +8,8 @@ namespace Domain.Entities
         public string Description { get; set; } = string.Empty;
         public string Address { get; set; } = string.Empty;
         public string ImageUrl { get; set; } = string.Empty;
+        public string Type1 { get; set; } = string.Empty; // e.g., "Phở", "Burger"
+        public string Type2 { get; set; } = string.Empty; // e.g., "Vietnamese", "Fast Food"
         
         // Location-Based properties
         public double Latitude { get; set; }

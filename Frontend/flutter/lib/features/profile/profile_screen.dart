@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/auth_provider.dart';
 import '../auth/login_screen.dart';
+import 'package:flutter_food_app/features/admin/admin_dashboard_screen.dart';
 import 'order_history_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -47,7 +48,27 @@ class ProfileScreen extends ConsumerWidget {
                           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 4),
-                        Text(user?.email ?? '', style: const TextStyle(color: Colors.grey)),
+                        if (user != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: user.isAdmin ? Colors.red[50] : Colors.blue[50],
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: user.isAdmin ? Colors.red.shade200 : Colors.blue.shade200,
+                              ),
+                            ),
+                            child: Text(
+                              user.isAdmin ? "QUẢN TRỊ VIÊN" : "NGƯỜI DÙNG",
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: user.isAdmin ? Colors.red.shade700 : Colors.blue.shade700,
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 4),
+                        Text(user?.email ?? '', style: const TextStyle(color: Colors.grey, fontSize: 12)),
                       ],
                     ),
                   ),
@@ -59,14 +80,14 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 16),
-            _buildMenuItems(context, ref),
+            _buildMenuItems(context, ref, user),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildMenuItems(BuildContext context, WidgetRef ref) {
+  Widget _buildMenuItems(BuildContext context, WidgetRef ref, UserState? user) {
     return Container(
       color: Colors.white,
       child: Column(
@@ -79,6 +100,10 @@ class ProfileScreen extends ConsumerWidget {
           const Divider(height: 1),
           _buildItem(context, Icons.history, 'Lịch sử đơn hàng', const OrderHistoryScreen()),
           const Divider(height: 1),
+          if (user?.isAdmin ?? false) ...[
+            _buildItem(context, Icons.admin_panel_settings, 'Quản trị hệ thống', const AdminDashboardScreen()),
+            const Divider(height: 1),
+          ],
           _buildItem(context, Icons.settings_outlined, 'Cài đặt', null),
           const Divider(height: 1),
           _buildItem(context, Icons.help_outline, 'Trợ giúp & Hỗ trợ', null),

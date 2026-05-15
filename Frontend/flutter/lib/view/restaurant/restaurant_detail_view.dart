@@ -22,10 +22,12 @@ class RestaurantDetailView extends StatefulWidget {
 
 class _RestaurantDetailViewState extends State<RestaurantDetailView> {
   final CartManager _cart = CartManager();
+  final TextEditingController _txtSearch = TextEditingController();
   List<MenuItemModel> _menuItems = [];
   List<String> _categories = [];
   int _selectedCatIndex = 0;
   bool _loadingMenu = true;
+  String _searchQuery = "";
 
   @override
   void initState() {
@@ -35,13 +37,12 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView> {
   }
 
   Future<void> _loadMenu() async {
-    final items =
-        await MenuItemModel.fetchByRestaurant(widget.restaurant.id);
+    final items = await MenuItemModel.fetchByRestaurant(widget.restaurant.id);
     if (!mounted) return;
     setState(() {
       _menuItems = items;
       _categories = MenuItemModel.categoriesOf(items);
-      
+
       if (widget.initialCategoryName != null) {
         final idx = _categories.indexOf(widget.initialCategoryName!);
         if (idx != -1) {
@@ -52,7 +53,7 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView> {
       } else {
         _selectedCatIndex = 0;
       }
-      
+
       _loadingMenu = false;
     });
   }
@@ -60,6 +61,7 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView> {
   @override
   void dispose() {
     _cart.removeListener(_onCartChanged);
+    _txtSearch.dispose();
     super.dispose();
   }
 
@@ -68,6 +70,15 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView> {
   @override
   Widget build(BuildContext context) {
     final r = widget.restaurant;
+
+    // Lọc món ăn dựa trên category được chọn VÀ từ khóa tìm kiếm
+    final filteredItems = _menuItems.where((m) {
+      final matchesCategory = _categories.isEmpty ||
+          m.category == _categories[_selectedCatIndex];
+      final matchesSearch = _searchQuery.isEmpty ||
+          m.name.toLowerCase().contains(_searchQuery.toLowerCase());
+      return matchesCategory && matchesSearch;
+    }).toList();
 
     return Scaffold(
       backgroundColor: TColor.background,
@@ -78,25 +89,44 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView> {
                 CustomScrollView(
                   slivers: [
                     _buildSliverAppBar(r),
-                    SliverToBoxAdapter(child: _buildRestaurantInfo(r)),
+                    SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildRestaurantInfo(r),
+                          _buildSearchBox(),
+                        ],
+                      ),
+                    ),
                     if (_categories.isNotEmpty)
                       SliverPersistentHeader(
                         pinned: true,
                         delegate: _CategoryTabDelegate(
                           categories: _categories,
                           selectedIndex: _selectedCatIndex,
-                          onSelect: (i) =>
-                              setState(() => _selectedCatIndex = i),
+                          onSelect: (i) => setState(() => _selectedCatIndex = i),
                           color: TColor.background,
                         ),
                       ),
-                    if (_categories.isEmpty)
+                    if (filteredItems.isEmpty)
                       SliverToBoxAdapter(
                         child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Text(
-                            'Chưa có món trong thực đơn.',
-                            style: TextStyle(color: TColor.secondaryText),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 60, horizontal: 40),
+                          child: Column(
+                            children: [
+                              Icon(Icons.search_off_rounded,
+                                  size: 60, color: TColor.placeholder),
+                              const SizedBox(height: 16),
+                              Text(
+                                _searchQuery.isEmpty
+                                    ? 'Chưa có món trong thực đơn.'
+                                    : 'Không tìm thấy món "${_searchQuery}"',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                    color: TColor.secondaryText, fontSize: 16),
+                              ),
+                            ],
                           ),
                         ),
                       )
@@ -104,27 +134,50 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView> {
                       SliverList(
                         delegate: SliverChildBuilderDelegate(
                           (context, index) {
-                            final filtered = _menuItems
-                                .where((m) =>
-                                    m.category ==
-                                    _categories[_selectedCatIndex])
-                                .toList();
-                            if (index >= filtered.length) return null;
-                            return _buildMenuItem(filtered[index]);
+                            return _buildMenuItem(filteredItems[index]);
                           },
-                          childCount: _menuItems
-                              .where((m) =>
-                                  m.category ==
-                                  _categories[_selectedCatIndex])
-                              .length,
+                          childCount: filteredItems.length,
                         ),
                       ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                    const SliverToBoxAdapter(child: SizedBox(height: 120)),
                   ],
                 ),
                 if (!_cart.isEmpty) _buildCartButton(context),
               ],
             ),
+    );
+  }
+
+  Widget _buildSearchBox() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Container(
+        height: 50,
+        decoration: BoxDecoration(
+          color: TColor.textfield,
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: TextField(
+          controller: _txtSearch,
+          onChanged: (val) => setState(() => _searchQuery = val),
+          decoration: InputDecoration(
+            hintText: "Tìm món trong nhà hàng...",
+            hintStyle: TextStyle(color: TColor.placeholder, fontSize: 14),
+            prefixIcon: Icon(Icons.search_rounded, color: TColor.secondaryText),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(vertical: 13),
+            suffixIcon: _searchQuery.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    onPressed: () {
+                      _txtSearch.clear();
+                      setState(() => _searchQuery = "");
+                    },
+                  )
+                : null,
+          ),
+        ),
+      ),
     );
   }
 
@@ -299,76 +352,48 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView> {
     final qty = _cart.quantityOf(item.id);
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: TColor.background,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: TColor.textfield, width: 1.5),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Ảnh món: URL từ API hoặc ảnh cố định theo id (mỗi món một seed)
           ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: SizedBox(
-              width: 72,
-              height: 72,
-              child: SmartImage(
-                item.imageUrl.trim().isNotEmpty
-                    ? item.imageUrl.trim()
-                    : 'https://picsum.photos/seed/${item.id}/200/200',
-                width: 72,
-                height: 72,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => ColoredBox(
-                  color: TColor.textfield,
-                  child: Center(
-                    child: Text(
-                      item.emoji,
-                      style: const TextStyle(fontSize: 36),
-                    ),
-                  ),
-                ),
-              ),
+            borderRadius: BorderRadius.circular(15),
+            child: SmartImage(
+              item.imageUrl.trim().isNotEmpty
+                  ? item.imageUrl.trim()
+                  : 'https://picsum.photos/seed/${item.id}/200/200',
+              width: 85,
+              height: 85,
+              fit: BoxFit.cover,
             ),
           ),
-          const SizedBox(width: 14),
-
-          // Tên + mô tả + giá
+          const SizedBox(width: 15),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        item.name,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: TColor.primaryText,
-                        ),
-                      ),
-                    ),
-                    if (item.isBestSeller)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: TColor.primary,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text(
-                          "🔥 Best",
-                          style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                  ],
+                Text(
+                  item.name,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: TColor.primaryText,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -378,94 +403,95 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      CartManager.formatPrice(item.price),
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: TColor.orangeDark,
-                      ),
-                    ),
-                    // Nút thêm/bớt
-                    qty == 0
-                        ? _addButton(item)
-                        : _quantityControl(item, qty),
-                  ],
+                Text(
+                  CartManager.formatPrice(item.price),
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: TColor.primary,
+                  ),
                 ),
               ],
             ),
+          ),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (qty == 0)
+                _addButton(item)
+              else
+                _quantityControl(item, qty),
+            ],
           ),
         ],
       ),
     );
   }
 
-  // Nút "+" khi chưa thêm
   Widget _addButton(MenuItemModel item) {
-    return GestureDetector(
+    return InkWell(
       onTap: () => _cart.addItem(item, widget.restaurant.id, widget.restaurant.name),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        width: 34,
-        height: 34,
+        width: 36,
+        height: 36,
         decoration: BoxDecoration(
           color: TColor.primary,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: TColor.primary.withValues(alpha: 0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
-        child: const Icon(Icons.add_rounded, color: Colors.white, size: 20),
+        child: const Icon(Icons.add_rounded, color: Colors.white, size: 24),
       ),
     );
   }
 
-  // Nút tăng/giảm khi đã có trong giỏ
   Widget _quantityControl(MenuItemModel item, int qty) {
-    return Row(
+    return Column(
       children: [
-        GestureDetector(
-          onTap: () => _cart.decreaseItem(item.id),
-          child: Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: TColor.primary,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.remove_rounded,
-                color: Colors.white, size: 16),
-          ),
-        ),
-        SizedBox(
-          width: 28,
-          child: Center(
-            child: Text(
-              qty.toString(),
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: TColor.primaryText,
-              ),
-            ),
-          ),
-        ),
         GestureDetector(
           onTap: () => _cart.increaseItem(item.id),
           child: Container(
-            width: 30,
-            height: 30,
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: TColor.primary,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.add_rounded, color: Colors.white, size: 16),
+            child: const Icon(Icons.add_rounded, color: Colors.white, size: 18),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Text(
+            qty.toString(),
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: TColor.primaryText,
+            ),
+          ),
+        ),
+        GestureDetector(
+          onTap: () => _cart.decreaseItem(item.id),
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: TColor.primary),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(Icons.remove_rounded, color: TColor.primary, size: 18),
           ),
         ),
       ],
     );
   }
 
-  // ── FLOATING CART BUTTON ──
   Widget _buildCartButton(BuildContext context) {
     return Positioned(
       bottom: 24,
