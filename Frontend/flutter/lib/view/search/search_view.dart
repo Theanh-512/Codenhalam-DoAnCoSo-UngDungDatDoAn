@@ -121,6 +121,12 @@ class _SearchViewState extends State<SearchView> {
                     child: AppSearchBar.inline(
                       controller: _txtSearch,
                       autofocus: widget.autofocus,
+                      showImageSearch: true,
+                      onImageSearchResult: (q) {
+                        _txtSearch.text = q;
+                        _txtSearch.selection = TextSelection.collapsed(offset: q.length);
+                        _runSearchAfterCompose();
+                      },
                       onChanged: (_) => _scheduleSearch(),
                       onSubmitted: _runSearchAfterCompose,
                       onClear: _onClearSearch,

@@ -4,16 +4,11 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_food_app/common/color_extension.dart';
 import 'package:flutter_food_app/model/restaurant_model.dart';
 import 'package:flutter_food_app/view/restaurant/restaurant_detail_view.dart';
-import 'package:flutter_food_app/model/category_model.dart';
-import 'package:flutter_food_app/model/menu_item_model.dart';
-import 'package:flutter_food_app/view/home/widget/category_cell.dart';
-import 'package:flutter_food_app/view/home/widget/popular_item_cell.dart';
 import 'package:flutter_food_app/view/home/widget/restaurant_cell.dart';
+import 'package:flutter_food_app/view/home/widget/banner_slider.dart';
 import 'package:flutter_food_app/view/map/map_picker_view.dart';
 import 'package:flutter_food_app/common_widget/app_search_bar.dart';
 import 'package:flutter_food_app/common/cart_nav.dart';
-import 'package:flutter_food_app/features/home/food_recognition_screen.dart';
-
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
 
@@ -26,8 +21,6 @@ class _HomeViewState extends State<HomeView> {
   String _currentAddress = "Vị trí hiện tại";
   /// Điểm giao hàng / vị trí tính khoảng cách đến nhà hàng.
   LatLng? _userLatLng;
-  List<CategoryModel> _categories = [];
-  List<MenuItemModel> _popularItems = [];
   bool _isLoading = true;
 
   @override
@@ -64,16 +57,10 @@ class _HomeViewState extends State<HomeView> {
       userLat: _userLatLng?.latitude,
       userLng: _userLatLng?.longitude,
     );
-    final catData = await CategoryModel.fetchAll();
-    // Lấy một số món nổi bật (mock hoặc filter từ menu items)
-    // Thực tế có thể gọi API riêng hoặc fetch ngẫu nhiên
-    final popularData = await MenuItemModel.search(""); // Search empty for all items
-    
+
     if (mounted) {
       setState(() {
         _restaurants = resData;
-        _categories = catData;
-        _popularItems = popularData.take(10).toList();
         _isLoading = false;
       });
     }
@@ -176,18 +163,8 @@ class _HomeViewState extends State<HomeView> {
                   childAspectRatio: 0.85,
                   children: [
                     _buildServiceItem(Icons.restaurant, "Đồ ăn", Colors.orange, () {}),
-                    _buildServiceItem(Icons.auto_awesome, "AI Camera", Colors.deepOrange, () async {
-                      final result = await Navigator.push<String>(
-                        context,
-                        MaterialPageRoute(builder: (context) => const FoodRecognitionScreen()),
-                      );
-                      if (result != null && result.isNotEmpty && mounted) {
-                        AppSearchBar.openSearch(
-                          context,
-                          initialQuery: result,
-                          autofocus: false,
-                        );
-                      }
+                    _buildServiceItem(Icons.auto_awesome, "AI Camera", Colors.deepOrange, () {
+                      AppSearchBar.openImageSearch(context);
                     }),
                     _buildServiceItem(Icons.motorcycle, "Xe máy", Colors.green, () {}),
                     _buildServiceItem(Icons.more_horiz, "Thêm", Colors.grey, () {}),
@@ -196,90 +173,9 @@ class _HomeViewState extends State<HomeView> {
               ),
 
               const SizedBox(height: 30),
-              
-              // Categories Section
-              if (_categories.isNotEmpty) ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Text(
-                    "Danh mục",
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: TColor.primaryText,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 15),
-                SizedBox(
-                  height: 120,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 15),
-                    itemCount: _categories.length,
-                    itemBuilder: (context, index) {
-                      return CategoryCell(
-                        category: _categories[index],
-                        onTap: () {
-                          // TODO: Navigate to category view
-                        },
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
 
-              // Promotional Banner Slider
-              SizedBox(
-                height: 150,
-                child: PageView.builder(
-                  controller: PageController(viewportFraction: 0.9),
-                  itemCount: 3,
-                  itemBuilder: (context, index) {
-                    final ads = [
-                      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=800&auto=format&fit=crop", 
-                      "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?q=80&w=800&auto=format&fit=crop",
-                      "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=800&auto=format&fit=crop",
-                    ];
-                    final titles = ["Giảm 50% Món Mới", "Món Ngon Cuối Tuần", "Giao Hàng Miễn Phí"];
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 5),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(15),
-                        image: DecorationImage(
-                          image: NetworkImage(ads[index]),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(15),
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.black.withValues(alpha: 0.7),
-                              Colors.transparent,
-                            ],
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                          ),
-                        ),
-                        alignment: Alignment.bottomLeft,
-                        padding: const EdgeInsets.all(15),
-                        child: Text(
-                          titles[index],
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 20),
+              const BannerSlider(),
+              const SizedBox(height: 10),
 
               // Popular Restaurants Title
               Padding(
@@ -331,7 +227,7 @@ class _HomeViewState extends State<HomeView> {
                 }
               ),
               
-              const SizedBox(height: 80), // bottom padding for FAB
+              const SizedBox(height: 80),
             ],
           ),
         ),

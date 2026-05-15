@@ -1,57 +1,64 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_food_app/common/color_extension.dart';
+import 'package:flutter_food_app/common/smart_image.dart';
 
+/// Banner quảng cáo tự chuyển slide mỗi [autoPlayInterval].
 class BannerSlider extends StatefulWidget {
-  const BannerSlider({super.key});
+  final Duration autoPlayInterval;
+
+  const BannerSlider({
+    super.key,
+    this.autoPlayInterval = const Duration(seconds: 5),
+  });
 
   @override
   State<BannerSlider> createState() => _BannerSliderState();
 }
 
 class _BannerSliderState extends State<BannerSlider> {
-  final PageController _controller = PageController();
-  int _currentPage = 0;
-  Timer? _timer;
-
-  // Mock banners — sau thay bằng data từ Firestore
-  final List<_BannerData> _banners = [
+  static const List<_BannerData> _banners = [
     _BannerData(
-      title: "Giảm 30%",
-      subtitle: "Cho đơn hàng đầu tiên",
-      emoji: "🍔",
-      color: const Color(0xFFFDD100),
+      title: 'Giảm 50% Món Mới',
+      imageUrl:
+          'https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=800&auto=format&fit=crop',
     ),
     _BannerData(
-      title: "Miễn phí ship",
-      subtitle: "Đơn từ 150.000đ",
-      emoji: "🛵",
-      color: const Color(0xFFFF6B35),
+      title: 'Món Ngon Cuối Tuần',
+      imageUrl:
+          'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?q=80&w=800&auto=format&fit=crop',
     ),
     _BannerData(
-      title: "Combo trưa",
-      subtitle: "Chỉ từ 49.000đ",
-      emoji: "🍱",
-      color: const Color(0xFF6F0706),
+      title: 'Giao Hàng Miễn Phí',
+      imageUrl:
+          'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=800&auto=format&fit=crop',
     ),
   ];
+
+  late final PageController _controller;
+  int _currentPage = 0;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    // Tự động chuyển banner mỗi 3 giây
-    _timer = Timer.periodic(const Duration(seconds: 3), (_) {
-      if (_currentPage < _banners.length - 1) {
-        _currentPage++;
-      } else {
-        _currentPage = 0;
-      }
-      _controller.animateToPage(
-        _currentPage,
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeInOut,
-      );
-    });
+    _controller = PageController(viewportFraction: 0.9);
+    _startAutoPlay();
+  }
+
+  void _startAutoPlay() {
+    _timer?.cancel();
+    _timer = Timer.periodic(widget.autoPlayInterval, (_) => _goToNext());
+  }
+
+  void _goToNext() {
+    if (!mounted || !_controller.hasClients) return;
+    final next = (_currentPage + 1) % _banners.length;
+    _controller.animateToPage(
+      next,
+      duration: const Duration(milliseconds: 450),
+      curve: Curves.easeInOut,
+    );
   }
 
   @override
@@ -74,69 +81,50 @@ class _BannerSliderState extends State<BannerSlider> {
             itemBuilder: (context, index) {
               final b = _banners[index];
               return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 4),
+                margin: const EdgeInsets.symmetric(horizontal: 5),
                 decoration: BoxDecoration(
-                  color: b.color,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(15),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                child: Row(
+                clipBehavior: Clip.antiAlias,
+                child: Stack(
+                  fit: StackFit.expand,
                   children: [
-                    // Text bên trái
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            b.title,
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            b.subtitle,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.25),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Text(
-                              "Đặt ngay",
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
+                    SmartImage(
+                      b.imageUrl,
+                      fit: BoxFit.cover,
+                    ),
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.black.withValues(alpha: 0.7),
+                            Colors.transparent,
+                          ],
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                        ),
                       ),
                     ),
-                    // Emoji bên phải
-                    Text(b.emoji, style: const TextStyle(fontSize: 64)),
+                    Align(
+                      alignment: Alignment.bottomLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.all(15),
+                        child: Text(
+                          b.title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               );
             },
           ),
         ),
-
-        // Dot indicator
         const SizedBox(height: 10),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -161,13 +149,6 @@ class _BannerSliderState extends State<BannerSlider> {
 
 class _BannerData {
   final String title;
-  final String subtitle;
-  final String emoji;
-  final Color color;
-  _BannerData({
-    required this.title,
-    required this.subtitle,
-    required this.emoji,
-    required this.color,
-  });
+  final String imageUrl;
+  const _BannerData({required this.title, required this.imageUrl});
 }

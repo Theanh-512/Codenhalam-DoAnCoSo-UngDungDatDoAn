@@ -6,7 +6,6 @@ import 'package:flutter_food_app/view/map/ai_map_view.dart';
 import 'package:flutter_food_app/view/order/order_view.dart';
 import 'package:flutter_food_app/view/profile/profile_view.dart';
 import 'package:flutter_food_app/view/more/more_view.dart';
-import 'package:flutter_food_app/features/home/food_recognition_screen.dart';
 
 class MainTabView extends StatefulWidget {
   const MainTabView({super.key});
@@ -49,32 +48,17 @@ class _MainTabViewState extends State<MainTabView> {
         ],
       ),
       backgroundColor: const Color(0xfff5f5f5),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const FoodRecognitionScreen()),
-          );
-        },
-        backgroundColor: TColor.primary,
-        shape: const CircleBorder(),
-        elevation: 4,
-        child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 30),
-      ),
       bottomNavigationBar: BottomAppBar(
         color: TColor.white,
         elevation: 8,
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 5),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildTabItem(0, Icons.grid_view_rounded, "Thực đơn"),
               _buildTabItem(1, Icons.auto_awesome_rounded, "AI Map"),
-              const SizedBox(width: 40), // Space for FAB
+              _buildTabItem(2, Icons.home_rounded, "Trang chủ"),
               _buildTabItem(3, Icons.person_outline_rounded, "Hồ sơ"),
               _buildTabItem(4, Icons.more_horiz_rounded, "Khác"),
             ],
