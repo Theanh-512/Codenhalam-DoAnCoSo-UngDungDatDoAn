@@ -12,10 +12,10 @@ namespace Infrastructure.Data
         public static async Task InitializeAsync(FoodAppDbContext context)
         {
             // Apply any pending migrations automatically when the app starts
-            if (context.Database.IsRelational())
-            {
-                await context.Database.MigrateAsync();
-            }
+            // if (context.Database.IsRelational())
+            // {
+            //     await context.Database.MigrateAsync();
+            // }
 
             // Seed Users if empty
             if (!await context.Users.AnyAsync())

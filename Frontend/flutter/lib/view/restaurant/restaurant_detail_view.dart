@@ -42,15 +42,14 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView> {
     if (!mounted) return;
     setState(() {
       _menuItems = items;
-      _categories = MenuItemModel.categoriesOf(items);
+      
+      // Thêm tùy chọn "Tất cả" vào đầu danh sách danh mục
+      final rawCats = MenuItemModel.categoriesOf(items);
+      _categories = ["Tất cả", ...rawCats];
 
       if (widget.initialCategoryName != null) {
-        final idx = _categories.indexOf(widget.initialCategoryName!);
-        if (idx != -1) {
-          _selectedCatIndex = idx;
-        } else {
-          _selectedCatIndex = 0;
-        }
+        final idx = _categories.indexWhere((c) => c.toLowerCase() == widget.initialCategoryName!.toLowerCase());
+        _selectedCatIndex = idx != -1 ? idx : 0;
       } else {
         _selectedCatIndex = 0;
       }
@@ -72,13 +71,20 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView> {
   Widget build(BuildContext context) {
     final r = widget.restaurant;
 
-    // Lọc món ăn dựa trên category được chọn VÀ từ khóa tìm kiếm
+    // Lọc món ăn: Đảm bảo không bao giờ bị trắng màn hình nếu có dữ liệu
     final filteredItems = _menuItems.where((m) {
-      final matchesCategory = _categories.isEmpty ||
-          m.category == _categories[_selectedCatIndex];
+      if (_categories.isEmpty) return true;
+      
+      final currentCat = _categories[_selectedCatIndex].trim().toLowerCase();
+      
+      // Nếu chọn "Tất cả" hoặc logic filter gặp lỗi, hiển thị dựa trên so khớp
+      final matchesCategory = currentCat == "tất cả" || 
+                             m.category.trim().toLowerCase() == currentCat;
+                             
       final matchesSearch = _searchQuery.isEmpty ||
           m.name.toLowerCase().contains(_searchQuery.toLowerCase());
-      return matchesCategory && matchesSearch;
+          
+      return matchesSearch && matchesCategory;
     }).toList();
 
     return Scaffold(
@@ -294,14 +300,14 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView> {
           ],
 
           // Stats row
-          Row(
+          Wrap(
+            spacing: 16,
+            runSpacing: 8,
             children: [
               _statChip(Icons.star_rounded, TColor.primary,
                   "${r.rating} (${r.reviewCount})"),
-              const SizedBox(width: 16),
               _statChip(Icons.access_time_rounded, TColor.secondaryText,
                   r.deliveryTime),
-              const SizedBox(width: 16),
               _statChip(Icons.delivery_dining_rounded, TColor.secondaryText,
                   r.deliveryFee == 0
                       ? "Miễn phí ship"
@@ -394,14 +400,18 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView> {
               ],
             ),
           ),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (qty == 0)
-                _addButton(item)
-              else
-                _quantityControl(item, qty),
-            ],
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 45, // Giới hạn chiều rộng nút để tránh overflow
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (qty == 0)
+                  _addButton(item)
+                else
+                  _quantityControl(item, qty),
+              ],
+            ),
           ),
         ],
       ),

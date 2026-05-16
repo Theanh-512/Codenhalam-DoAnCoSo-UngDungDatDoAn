@@ -1,6 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-/// Nhiều host (loremflickr, v.v.) trả 403 nếu không có User-Agent giống trình duyệt.
 const Map<String, String> kNetworkImageHeaders = {
   'User-Agent':
       'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
@@ -18,18 +18,38 @@ class SmartImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (path.isEmpty) return const SizedBox();
+    if (path.isEmpty) return _errorWidget();
+    
     if (path.startsWith("http") || path.startsWith("https")) {
+      String finalUrl = path.trim();
+      
+      if (kIsWeb) {
+        try {
+          // Chuẩn hóa URL: Giải mã rồi mã hóa lại để trình duyệt Web đọc được mọi ký tự đặc biệt
+          final decoded = Uri.decodeFull(finalUrl);
+          finalUrl = Uri.parse(decoded).toString();
+        } catch (_) {}
+      }
+
       return Image.network(
-        path,
+        finalUrl,
         width: width,
         height: height,
         fit: fit,
-        headers: kNetworkImageHeaders,
-        errorBuilder: errorBuilder,
+        headers: kIsWeb ? null : kNetworkImageHeaders,
+        errorBuilder: (context, error, stackTrace) => errorBuilder?.call(context, error, stackTrace) ?? _errorWidget(),
       );
     } else {
       return Image.asset(path, width: width, height: height, fit: fit, errorBuilder: errorBuilder);
     }
+  }
+
+  Widget _errorWidget() {
+    return Container(
+      width: width,
+      height: height,
+      color: Colors.grey[200],
+      child: const Center(child: Icon(Icons.broken_image_outlined, color: Colors.grey, size: 30)),
+    );
   }
 }

@@ -17,6 +17,8 @@ namespace Domain.Entities
         
         public string OpeningHours { get; set; } = string.Empty; // e.g., "08:00-22:00"
         public bool IsActive { get; set; } = true;
+        public double Rating { get; set; } = 4.0;
+        public int ReviewCount { get; set; } = 0;
 
         public ICollection<FoodItem> FoodItems { get; set; } = new List<FoodItem>();
     }

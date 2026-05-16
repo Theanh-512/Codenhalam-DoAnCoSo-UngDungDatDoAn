@@ -188,29 +188,29 @@ class AIModelManager:
 
         probs = torch.exp(log_probs).squeeze(0)
         
-        # Heavy Penalty during Lunch (11-13) or Dinner (18-20)
-        is_peak = (11 <= hour <= 13) or (18 <= hour <= 20)
-        dist_factor = 4.0 if is_peak else 2.0 
-
+        # Lấy 500 ứng viên tiềm năng nhất theo sở thích (AI Model)
         top_scores, top_indices = torch.topk(probs, 500)
         
         for i in range(len(top_indices)):
             idx_str = str(top_indices[i].item())
             if idx_str in self.mapping["idx_to_coord"]:
                 r_lat, r_lng = self.mapping["idx_to_coord"][idx_str]
-                real_dist = haversine(lat, lng, r_lat, r_lng)
-                penalty = 1.0 / (1.0 + (real_dist**2) / dist_factor)
                 
-                # CỘNG ĐIỂM SENTIMENT (AI ĐÃ HỌC TỪ SUPABASE)
-                sentiment_bonus = 1.0
-                rid = self.mapping["idx_to_rest_id"].get(idx_str)
-                # Tìm tên nhà hàng để lấy điểm sentiment
-                for r_name, s_score in self.sentiment_data.items():
-                    # Logic đơn giản: nếu restaurant_id khớp (cần mapping ID hoặc Name)
-                    # Ở đây ta dùng giả định mapping tên nếu có
-                    pass 
-
-                top_scores[i] *= penalty
+                # Tính khoảng cách thực tế từ người dùng đến quán (km)
+                real_dist = haversine(lat, lng, r_lat, r_lng)
+                
+                # LOGIC ƯU TIÊN BÁN KÍNH 10KM
+                if real_dist <= 10.0:
+                    # Trong phạm vi 10km: Giảm nhẹ điểm theo khoảng cách (càng gần càng tốt)
+                    # Hệ số penalty từ 1.0 (ở sát bên) đến ~0.67 (ở mốc 10km)
+                    dist_penalty = 1.0 / (1.0 + (real_dist / 20.0))
+                else:
+                    # Ngoài phạm vi 10km: Phạt cực nặng (giảm ít nhất 90% điểm số)
+                    # Điều này đảm bảo các quán ở xa sẽ bị đẩy xuống dưới cùng
+                    dist_penalty = 0.1 / (1.0 + (real_dist - 10.0))
+                
+                # Áp dụng trọng số khoảng cách vào điểm số của AI
+                top_scores[i] *= dist_penalty
 
         resorted_scores, resorted_inds = torch.topk(top_scores, 10)
         top_inds = [top_indices[i] for i in resorted_inds]
@@ -261,42 +261,45 @@ class FoodRecognitionManager:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = None
         self.classes = []
-        self._load_classes()
-        self._load_model()
+        
+        # Tên file model bạn vừa train từ Colab
+        # Ưu tiên dùng archive_1_model.pth (30 món ăn)
+        self.model_filename = "archive_1_model.pth"
+        self.weight_path = os.path.join(CURRENT_DIR, self.model_filename)
+        
+        self._load_model_and_classes()
         
         self.transform = transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
+            transforms.Resize((224, 224)), # Khớp với kích thước ảnh lúc train trên Colab
             transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ])
 
-    def _load_classes(self):
-        classes_path = os.path.join(PROJECT_ROOT, "classes.txt")
-        if os.path.exists(classes_path):
-            with open(classes_path, 'r') as f:
-                self.classes = [line.strip() for line in f.readlines()]
-            logger.info(f"✅ Loaded {len(self.classes)} food classes.")
-        else:
-            # Dự phòng nếu không có file
-            self.classes = ["Phở", "Bánh Mì", "Bún Bò", "Cơm Tấm", "Pizza"]
-
-    def _load_model(self):
+    def _load_model_and_classes(self):
         try:
-            # Khởi tạo MobileNetV3 Large (khớp với script Colab)
-            self.model = models.mobilenet_v3_large(pretrained=False)
-            num_ftrs = self.model.classifier[3].in_features
-            self.model.classifier[3] = nn.Linear(num_ftrs, len(self.classes))
-            
-            weight_path = os.path.join(PROJECT_ROOT, "food_recognition_v1.pth")
-            if os.path.exists(weight_path):
-                self.model.load_state_dict(torch.load(weight_path, map_location=self.device))
-                logger.info(f"✅ Loaded Food Recognition weights from {weight_path}")
-            
-            self.model.to(self.device)
-            self.model.eval()
+            if os.path.exists(self.weight_path):
+                # Nạp checkpoint chứa trọng số và danh sách class
+                checkpoint = torch.load(self.weight_path, map_location=self.device)
+                self.classes = checkpoint['classes']
+                
+                # Khởi tạo EfficientNetV2_S (Kiến trúc đã dùng trên Colab)
+                self.model = models.efficientnet_v2_s(weights=None)
+                num_ftrs = self.model.classifier[1].in_features
+                self.model.classifier[1] = nn.Linear(num_ftrs, len(self.classes))
+                
+                # Nạp trọng số từ file .pth
+                self.model.load_state_dict(checkpoint['model_state_dict'])
+                logger.info(f"✅ Đã nhúng thành công Model mới: {self.model_filename}")
+                logger.info(f"✅ Đã nạp {len(self.classes)} nhãn món ăn từ Model.")
+                
+                self.model.to(self.device)
+                self.model.eval()
+            else:
+                logger.error(f"❌ Không tìm thấy file model tại: {self.weight_path}")
+                # Dự phòng nếu không có file
+                self.classes = ["Phở", "Bánh Mì", "Bún Bò", "Cơm Tấm"]
         except Exception as e:
-            logger.error(f"❌ Error loading Food Recognition model: {e}")
+            logger.error(f"❌ Lỗi khi nạp Model nhận diện: {e}")
 
     @torch.no_grad()
     def predict(self, image_bytes):

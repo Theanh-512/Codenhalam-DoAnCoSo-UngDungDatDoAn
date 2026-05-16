@@ -82,15 +82,23 @@ class MenuItemModel {
     return out;
   }
 
-  static Future<List<MenuItemModel>> fetchByRestaurant(String restaurantId) async {
+  static Future<List<MenuItemModel>> fetchByRestaurant(dynamic restaurantId) async {
     try {
-      final url = Uri.parse('${Globs.baseUrl}/api/Restaurants/$restaurantId/menu');
-      final res = await http.get(url);
+      final cleanId = restaurantId.toString();
+      final url = Uri.parse('${Globs.baseUrl}/api/Restaurants/$cleanId/menu');
+      print("🔍 Đang tải thực đơn từ: $url");
+      
+      final res = await http.get(url).timeout(const Duration(seconds: 10));
       if (res.statusCode == 200) {
         final List data = jsonDecode(res.body);
+        print("✅ Đã tải được ${data.length} món ăn.");
         return data.map((e) => MenuItemModel.fromJson(e)).toList();
+      } else {
+        print("❌ Lỗi API Menu: ${res.statusCode}");
       }
-    } catch (_) {}
+    } catch (e) {
+      print("❌ Lỗi kết nối Menu: $e");
+    }
     return [];
   }
 

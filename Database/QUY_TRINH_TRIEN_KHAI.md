@@ -85,3 +85,26 @@ flutter run
 
 ---
 *Hướng dẫn được soạn bởi Antigravity AI - Hỗ trợ triển khai đồ án chuyên sâu.*
+
+
+File AIEngine/MODEL_EXPLANATION.md là nơi chứa đựng toàn bộ nền tảng lý thuyết và các công thức toán học cốt lõi áp dụng vào bài toán của bạn. Đây là tài liệu cực kỳ giá trị để bạn đưa vào báo cáo đồ án.
+
+Dưới đây là tóm tắt các file chứa thuật toán và công thức tương ứng:
+
+1. Thuật toán Sở thích Ngắn hạn (Short-term Preference)
+File: AIEngine/models/short_term.py
+Lý thuyết: Self Multi-Head Attentive Aggregation.
+Công thức: $$ \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V $$
+Giải thích: AI sử dụng cơ chế chú ý (Attention) để tính toán sự tương quan giữa các món ăn người dùng vừa xem trong phiên (Session). Hệ số $\beta_j$ sinh ra từ hàm softmax cho biết món ăn nào đang là "mục tiêu chính" của khách hàng.
+2. Thuật toán Sở thích Dài hạn (Long-term Preference)
+File: AIEngine/models/long_term.py
+Lý thuyết: Time-LSTM với Cổng Thời Gian (Time Gates).
+Giải thích: Không giống LSTM thông thường, thuật toán này có thêm các cổng $T_1, T_2$ phụ thuộc vào khoảng cách thời gian $\Delta t$ giữa các lần tương tác. Điều này giúp AI hiểu được tính chu kỳ (ví dụ: thói quen ăn Phở vào sáng Chủ Nhật).
+3. Thuật toán Hợp nhất Đa phương thức (Multimodal Fusion)
+File: AIEngine/models/scr_model.py
+Lý thuyết: Hierarchical Attention Fusion.
+Giải thích: Đây là nơi kết hợp 3 thành phần: Đặc trưng hình ảnh (từ ảnh chụp), Sở thích ngắn hạn, và Sở thích dài hạn. AI tự học xem yếu tố nào quan trọng hơn tại thời điểm đó để đưa ra gợi ý cuối cùng.
+4. Công thức lọc theo Ngữ cảnh (Context-Aware)
+File: backend/AIService/main.py (Hàm predict)
+Công thức Haversine: Tính khoảng cách địa lý thực tế.
+Công thức Penalty: $Score_{final} = Score_{AI} \times Penalty_{distance}$ (Dùng để giới hạn bán kính 10km như bạn yêu cầu).

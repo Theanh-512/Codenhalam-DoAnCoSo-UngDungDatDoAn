@@ -38,8 +38,22 @@ namespace API.Controllers
         public async Task<ActionResult<IEnumerable<FoodItem>>> GetMenu(int id)
         {
             var menu = await _context.FoodItems
+                .AsNoTracking()
                 .Include(f => f.Category)
                 .Where(f => f.RestaurantId == id && f.IsAvailable)
+                .Select(f => new FoodItem {
+                    Id = f.Id,
+                    Name = f.Name,
+                    Description = f.Description,
+                    Price = f.Price,
+                    ImageUrl = f.ImageUrl,
+                    CategoryId = f.CategoryId,
+                    RestaurantId = f.RestaurantId,
+                    Rating = f.Rating,
+                    Category = f.Category,
+                    IsAvailable = f.IsAvailable,
+                    CreatedDate = f.CreatedDate
+                })
                 .ToListAsync();
 
             return menu ?? new List<FoodItem>();
@@ -65,59 +79,73 @@ namespace API.Controllers
         [HttpGet("recommend")]
         public async Task<ActionResult<IEnumerable<Restaurant>>> GetRecommendedRestaurants([FromQuery] int userId, [FromQuery] double lat, [FromQuery] double lng)
         {
-            // THEO BÁO CÁO: Tối ưu hóa cơ chế Caching cho dữ liệu Long-term
-            var cacheKey = $"User_{userId}_Lat_{lat}_Lng_{lng}_Recs";
-            if (_cache.TryGetValue(cacheKey, out List<Restaurant>? cachedRestaurants) && cachedRestaurants != null)
-            {
-                return cachedRestaurants;
-            }
-
-            // THEO BÁO CÁO: Giới hạn bán kính không gian (Spatial filtering 5km-10km)
             var allRestaurants = await _context.Restaurants.ToListAsync();
             var nearbyRestaurants = allRestaurants
                 .Where(r => CalculateDistance(lat, lng, r.Latitude, r.Longitude) <= 10.0)
                 .ToList();
 
-            if (!nearbyRestaurants.Any())
-            {
-                return NotFound(new { message = "Không tìm thấy nhà hàng nào trong bán kính 10km." });
-            }
+            if (!nearbyRestaurants.Any()) return Ok(new List<Restaurant>());
 
             var aiEngine = new AICore.RecommendationEngine();
-            // Gọi AI Service (Sẽ gọi gRPC trong thực tế) để lấy Top-N
-            var topIds = await aiEngine.PredictTopN(userId, lat, lng, 5);
-
-            List<Restaurant> recommendedRestaurants;
+            var topIds = await aiEngine.PredictTopN(userId, lat, lng, 10);
 
             if (topIds == null || topIds.Length == 0)
             {
-                // THEO BÁO CÁO: Vấn đề Cold Start -> Cơ chế Fallback sử dụng KNN (khoảng cách thuần túy)
-                recommendedRestaurants = nearbyRestaurants
-                    .OrderBy(r => CalculateDistance(lat, lng, r.Latitude, r.Longitude))
-                    .Take(5)
-                    .ToList();
-            }
-            else
-            {
-                recommendedRestaurants = nearbyRestaurants
-                    .Where(r => topIds.Contains(r.Id))
-                    .ToList();
-
-                if (!recommendedRestaurants.Any()) 
-                {
-                    recommendedRestaurants = nearbyRestaurants
-                        .OrderBy(r => CalculateDistance(lat, lng, r.Latitude, r.Longitude))
-                        .Take(5)
-                        .ToList();
-                }
+                return nearbyRestaurants.OrderBy(r => CalculateDistance(lat, lng, r.Latitude, r.Longitude)).Take(10).ToList();
             }
 
-            // Lưu vào Memory Cache với TTL 30 phút (Giảm tải truy vấn SQL)
-            var cacheEntryOptions = new MemoryCacheEntryOptions()
-                .SetAbsoluteExpiration(TimeSpan.FromMinutes(30));
-            _cache.Set(cacheKey, recommendedRestaurants, cacheEntryOptions);
+            return nearbyRestaurants.Where(r => topIds.Contains(r.Id)).ToList();
+        }
 
-            return recommendedRestaurants;
+        // 1. Gợi ý quán gần nhất (Bán kính 10km)
+        [HttpGet("map/nearby")]
+        public async Task<ActionResult<IEnumerable<Restaurant>>> GetNearby([FromQuery] double lat, [FromQuery] double lng)
+        {
+            var restaurants = await _context.Restaurants.ToListAsync();
+            var nearby = restaurants
+                .Where(r => CalculateDistance(lat, lng, r.Latitude, r.Longitude) <= 10.0)
+                .OrderBy(r => CalculateDistance(lat, lng, r.Latitude, r.Longitude))
+                .Take(20)
+                .ToList();
+            return Ok(nearby);
+        }
+
+        // 2. Gợi ý theo thói quen & Khung giờ
+        [HttpGet("map/contextual")]
+        public async Task<ActionResult<IEnumerable<Restaurant>>> GetContextual([FromQuery] int userId, [FromQuery] double lat, [FromQuery] double lng)
+        {
+            var hour = DateTime.Now.Hour;
+            var restaurants = await _context.Restaurants.ToListAsync();
+            var nearby = restaurants.Where(r => CalculateDistance(lat, lng, r.Latitude, r.Longitude) <= 15.0).ToList();
+
+            // Logic gợi ý theo khung giờ (Simple Rule-based AI)
+            IEnumerable<Restaurant> filtered;
+            if (hour >= 6 && hour <= 10) // Sáng
+                filtered = nearby.Where(r => r.Name.Contains("Phở") || r.Name.Contains("Bánh mì") || r.Name.Contains("Café") || r.Name.Contains("Coffee"));
+            else if (hour >= 11 && hour <= 14) // Trưa
+                filtered = nearby.Where(r => r.Name.Contains("Cơm") || r.Name.Contains("Bún"));
+            else if (hour >= 17 && hour <= 21) // Tối
+                filtered = nearby.Where(r => r.Name.Contains("BBQ") || r.Name.Contains("Lẩu") || r.Name.Contains("Nhà hàng"));
+            else // Đêm
+                filtered = nearby.Take(10);
+
+            var result = filtered.OrderBy(r => Guid.NewGuid()).Take(15).ToList();
+            if (!result.Any()) result = nearby.Take(10).ToList();
+
+            return Ok(result);
+        }
+
+        // 3. Gợi ý quán tốt nên thử (Rating cao)
+        [HttpGet("map/top-rated")]
+        public async Task<ActionResult<IEnumerable<Restaurant>>> GetTopRated([FromQuery] double lat, [FromQuery] double lng)
+        {
+            var restaurants = await _context.Restaurants.ToListAsync();
+            var topRated = restaurants
+                .Where(r => r.Rating >= 4.5 && CalculateDistance(lat, lng, r.Latitude, r.Longitude) <= 20.0)
+                .OrderByDescending(r => r.Rating)
+                .Take(15)
+                .ToList();
+            return Ok(topRated);
         }
 
         // GET: api/Restaurants/by-category/{categoryName}
