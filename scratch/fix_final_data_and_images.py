@@ -109,7 +109,7 @@ def fix_final_data():
             res_img = f"{IMAGE_BASE_URL}/{encoded_path}"
             
             # Thêm Rating và ReviewCount ngẫu nhiên
-            rating = round(random.uniform(3.5, 5.0), 1)
+            rating = round(random.uniform(3.5, 4.9), 1)
             review_count = random.randint(10, 500)
             
             cur.execute("""
@@ -132,7 +132,7 @@ def fix_final_data():
                 food_items.append((
                     item_name, f"Hương vị {item_name} thơm ngon đặc sắc.",
                     random.randint(35, 120) * 1000, f"{IMAGE_BASE_URL}/{enc_p}",
-                    True, cat_db_map[res_type], rid, round(random.uniform(4.0, 5.0), 1), datetime.datetime.now()
+                    True, cat_db_map[res_type], rid, round(random.uniform(3.8, 4.9), 1), datetime.datetime.now()
                 ))
             
             if food_items:

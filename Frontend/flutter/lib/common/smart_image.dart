@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -19,6 +20,23 @@ class SmartImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (path.isEmpty) return _errorWidget();
+    
+    if (path.startsWith("data:image")) {
+      try {
+        final commaIndex = path.indexOf(',');
+        if (commaIndex != -1) {
+          final base64Data = path.substring(commaIndex + 1);
+          final bytes = base64Decode(base64Data.trim());
+          return Image.memory(
+            bytes,
+            width: width,
+            height: height,
+            fit: fit,
+            errorBuilder: (context, error, stackTrace) => errorBuilder?.call(context, error, stackTrace) ?? _errorWidget(),
+          );
+        }
+      } catch (_) {}
+    }
     
     if (path.startsWith("http") || path.startsWith("https")) {
       String finalUrl = path.trim();

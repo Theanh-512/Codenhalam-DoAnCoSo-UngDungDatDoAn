@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:flutter_food_app/common/auth_store.dart';
@@ -24,6 +25,7 @@ class _AdminMenuItemsViewState extends State<AdminMenuItemsView> {
   String? _filterRestaurantId;
   bool _loading = true;
   String? _err;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -127,7 +129,17 @@ class _AdminMenuItemsViewState extends State<AdminMenuItemsView> {
     final descCtrl = TextEditingController(text: existing?['description']?.toString() ?? '');
     final priceCtrl = TextEditingController(text: existing?['price']?.toString() ?? '0');
     final catIdCtrl = TextEditingController(text: existing?['categoryId']?.toString() ?? '1');
-    final imgCtrl = TextEditingController(text: existing?['imageUrl']?.toString() ?? '');
+    
+    final initialImg = existing?['imageUrl']?.toString() ?? '';
+    String? pickedBase64;
+    final imgCtrl = TextEditingController();
+    if (initialImg.startsWith('data:image')) {
+      pickedBase64 = initialImg;
+      imgCtrl.text = '[Ảnh thiết bị]';
+    } else {
+      imgCtrl.text = initialImg;
+    }
+    
     var best = existing?['is_best_seller'] == true;
 
     final created = await showDialog<bool>(
@@ -165,7 +177,86 @@ class _AdminMenuItemsViewState extends State<AdminMenuItemsView> {
                   decoration: const InputDecoration(labelText: 'ID danh mục (vd: 1-Phở, 2-Pizza)'),
                   keyboardType: TextInputType.number,
                 ),
-                TextField(controller: imgCtrl, decoration: const InputDecoration(labelText: 'URL ảnh')),
+                const SizedBox(height: 12),
+                if (pickedBase64 != null || imgCtrl.text.trim().isNotEmpty) ...[
+                  Container(
+                    width: 260,
+                    height: 130,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: SmartImage(
+                        pickedBase64 ?? imgCtrl.text.trim(),
+                        width: 260,
+                        height: 130,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: imgCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'URL ảnh',
+                        ),
+                        enabled: pickedBase64 == null,
+                        onChanged: (_) => setSt(() {}),
+                      ),
+                    ),
+                    if (pickedBase64 != null)
+                      IconButton(
+                        icon: const Icon(Icons.clear, color: Colors.red),
+                        onPressed: () {
+                          setSt(() {
+                            pickedBase64 = null;
+                            imgCtrl.clear();
+                          });
+                        },
+                      ),
+                    const SizedBox(width: 8),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: TColor.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      icon: const Icon(Icons.image_search, size: 18),
+                      label: const Text('Chọn ảnh', style: TextStyle(fontSize: 12)),
+                      onPressed: () async {
+                        try {
+                          final picker = ImagePicker();
+                          final XFile? image = await picker.pickImage(
+                            source: ImageSource.gallery,
+                            maxWidth: 400,
+                            maxHeight: 400,
+                            imageQuality: 70,
+                          );
+                          if (image != null) {
+                            final bytes = await image.readAsBytes();
+                            final base64Str = base64Encode(bytes);
+                            final ext = image.name.split('.').last.toLowerCase();
+                            final mime = (ext == 'png') ? 'image/png' : 'image/jpeg';
+                            setSt(() {
+                              pickedBase64 = 'data:$mime;base64,$base64Str';
+                              imgCtrl.text = '[Ảnh thiết bị]';
+                            });
+                          }
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Lỗi chọn ảnh: $e')),
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -196,7 +287,7 @@ class _AdminMenuItemsViewState extends State<AdminMenuItemsView> {
         'name': nameCtrl.text.trim(),
         'description': descCtrl.text.trim(),
         'price': double.tryParse(priceCtrl.text.trim()) ?? 0,
-        'imageUrl': imgCtrl.text.trim(),
+        'imageUrl': pickedBase64 ?? imgCtrl.text.trim(),
         'rating': existing?['rating'] ?? 5.0,
         'isAvailable': true,
       };
@@ -233,6 +324,13 @@ class _AdminMenuItemsViewState extends State<AdminMenuItemsView> {
 
   @override
   Widget build(BuildContext context) {
+    final filtered = _items.where((item) {
+      final name = (item['name'] ?? '').toString().toLowerCase();
+      final desc = (item['description'] ?? '').toString().toLowerCase();
+      final query = _searchQuery.toLowerCase();
+      return name.contains(query) || desc.contains(query);
+    }).toList();
+
     return Scaffold(
       backgroundColor: const Color(0xfff5f5f5),
       appBar: AppBar(
@@ -285,15 +383,54 @@ class _AdminMenuItemsViewState extends State<AdminMenuItemsView> {
                         },
                       ),
                     ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: TextField(
+                        onChanged: (val) {
+                          setState(() {
+                            _searchQuery = val;
+                          });
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'Tìm kiếm món ăn trong menu...',
+                          prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, color: Colors.grey),
+                                  onPressed: () {
+                                    setState(() {
+                                      _searchQuery = '';
+                                    });
+                                  },
+                                )
+                              : null,
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: TColor.primary, width: 1.5),
+                          ),
+                        ),
+                      ),
+                    ),
                     Expanded(
                       child: RefreshIndicator(
                         onRefresh: _loadItems,
                         child: ListView.separated(
                           padding: const EdgeInsets.all(16),
-                          itemCount: _items.length,
+                          itemCount: filtered.length,
                           separatorBuilder: (_, __) => const SizedBox(height: 10),
                           itemBuilder: (context, i) {
-                            final r = _items[i] as Map<String, dynamic>;
+                            final r = filtered[i] as Map<String, dynamic>;
                             final id = r['id']?.toString() ?? '';
                             final img = r['imageUrl']?.toString() ?? '';
                             return Material(

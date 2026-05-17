@@ -317,6 +317,7 @@ namespace API.Controllers
                         // Rules: Mở rộng vùng TP.HCM
                         if (lat < 10.2 || lat > 11.1 || lng < 106.2 || lng > 107.1) continue;
 
+                        var rng = new Random();
                         newRestaurants.Add(new Restaurant 
                         { 
                             Name = name, 
@@ -324,7 +325,9 @@ namespace API.Controllers
                             Address = "Hồ Chí Minh",
                             ImageUrl = GetRandomFoodImage(name),
                             Latitude = lat, Longitude = lng,
-                            OpeningHours = "06:00-23:00"
+                            OpeningHours = "06:00-23:00",
+                            Rating = Math.Round(3.5 + rng.NextDouble() * 1.4, 1),
+                            ReviewCount = rng.Next(15, 450)
                         });
                         count++;
                     }
@@ -343,6 +346,7 @@ namespace API.Controllers
 
                 // NẠP MENU PHONG PHÚ (Đảm bảo ID khớp 100%)
                 var foodItems = new List<FoodItem>();
+                var rnd = new Random();
                 foreach (var res in newRestaurants)
                 {
                     var menu = GetMenuForRestaurant(res.Name);
@@ -355,13 +359,14 @@ namespace API.Controllers
                             RestaurantId = res.Id, 
                             CategoryId = catId, 
                             ImageUrl = item.img, 
-                            IsAvailable = true 
+                            IsAvailable = true,
+                            Rating = Math.Round(3.8 + rnd.NextDouble() * 1.1, 1)
                         });
                     }
                     
                     // Thêm các món phụ
-                    foodItems.Add(new FoodItem { Name = "Nước Giải Khát", Price = 15000m, RestaurantId = res.Id, CategoryId = catId, ImageUrl = "https://images.unsplash.com/photo-1544145945-f904253d0c7b?w=200", IsAvailable = true });
-                    foodItems.Add(new FoodItem { Name = "Trái Cây Tráng Miệng", Price = 30000m, RestaurantId = res.Id, CategoryId = catId, ImageUrl = "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=200", IsAvailable = true });
+                    foodItems.Add(new FoodItem { Name = "Nước Giải Khát", Price = 15000m, RestaurantId = res.Id, CategoryId = catId, ImageUrl = "https://images.unsplash.com/photo-1544145945-f904253d0c7b?w=200", IsAvailable = true, Rating = Math.Round(4.0 + rnd.NextDouble() * 0.9, 1) });
+                    foodItems.Add(new FoodItem { Name = "Trái Cây Tráng Miệng", Price = 30000m, RestaurantId = res.Id, CategoryId = catId, ImageUrl = "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=200", IsAvailable = true, Rating = Math.Round(4.0 + rnd.NextDouble() * 0.9, 1) });
                 }
                 
                 _context.FoodItems.AddRange(foodItems);
