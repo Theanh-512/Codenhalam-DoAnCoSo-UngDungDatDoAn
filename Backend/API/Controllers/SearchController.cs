@@ -31,10 +31,10 @@ namespace API.Controllers
             var restaurants = await _context.Restaurants
                 .AsNoTracking()
                 .Where(r => r.IsActive && (
-                    EF.Functions.ILike(r.Name, $"%{keyword}%")
-                    || EF.Functions.ILike(r.Description ?? "", $"%{keyword}%")
-                    || EF.Functions.ILike(r.Type1 ?? "", $"%{keyword}%")
-                    || EF.Functions.ILike(r.Type2 ?? "", $"%{keyword}%")))
+                    EF.Functions.ILike(EF.Functions.Unaccent(r.Name), EF.Functions.Unaccent($"%{keyword}%"))
+                    || EF.Functions.ILike(EF.Functions.Unaccent(r.Description ?? ""), EF.Functions.Unaccent($"%{keyword}%"))
+                    || EF.Functions.ILike(EF.Functions.Unaccent(r.Type1 ?? ""), EF.Functions.Unaccent($"%{keyword}%"))
+                    || EF.Functions.ILike(EF.Functions.Unaccent(r.Type2 ?? ""), EF.Functions.Unaccent($"%{keyword}%"))))
                 .OrderBy(r => r.Name)
                 .Take(20)
                 .Select(r => new
@@ -54,10 +54,11 @@ namespace API.Controllers
 
             var foodItems = await _context.FoodItems
                 .AsNoTracking()
+                .Include(f => f.Restaurant)
                 .Where(f => f.IsAvailable && (
-                    EF.Functions.ILike(f.Name, $"%{keyword}%")
-                    || EF.Functions.ILike(f.Description ?? "", $"%{keyword}%")
-                    || EF.Functions.ILike(f.Category!.Name, $"%{keyword}%")))
+                    EF.Functions.ILike(EF.Functions.Unaccent(f.Name), EF.Functions.Unaccent($"%{keyword}%"))
+                    || EF.Functions.ILike(EF.Functions.Unaccent(f.Description ?? ""), EF.Functions.Unaccent($"%{keyword}%"))
+                    || EF.Functions.ILike(EF.Functions.Unaccent(f.Category!.Name), EF.Functions.Unaccent($"%{keyword}%"))))
                 .OrderBy(f => f.Name)
                 .Take(50)
                 .Select(f => new
@@ -68,6 +69,7 @@ namespace API.Controllers
                     price = f.Price,
                     imageUrl = f.ImageUrl ?? "",
                     restaurantId = f.RestaurantId,
+                    restaurantName = f.Restaurant != null ? f.Restaurant.Name : "",
                     isAvailable = f.IsAvailable,
                     categoryId = f.CategoryId,
                     category = f.Category != null ? f.Category.Name : "",

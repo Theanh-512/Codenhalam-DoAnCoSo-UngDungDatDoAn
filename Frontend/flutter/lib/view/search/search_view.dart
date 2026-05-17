@@ -245,7 +245,21 @@ class _SearchViewState extends State<SearchView> {
         ),
       ),
       title: Text(item.name, style: TextStyle(color: TColor.primaryText, fontWeight: FontWeight.w700)),
-      subtitle: Text(item.category, style: TextStyle(color: TColor.secondaryText, fontSize: 13)),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (item.restaurantName.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Text(
+                "Quán: ${item.restaurantName}",
+                style: TextStyle(color: TColor.primary, fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+            ),
+          Text(item.category, style: TextStyle(color: TColor.secondaryText, fontSize: 12)),
+        ],
+      ),
       trailing: Text(currencyFormatter.format(item.price), style: TextStyle(color: TColor.primary, fontWeight: FontWeight.bold)),
       onTap: () {
         Navigator.push(
@@ -260,6 +274,7 @@ class _SearchViewState extends State<SearchView> {
                 "image": item.imageUrl,
                 "description": item.description,
                 "category": item.category,
+                "restaurant_name": item.restaurantName,
               },
             ),
           ),

@@ -11,11 +11,14 @@ namespace Infrastructure.Data
     {
         public static async Task InitializeAsync(FoodAppDbContext context)
         {
-            // Apply any pending migrations automatically when the app starts
-            // if (context.Database.IsRelational())
-            // {
-            //     await context.Database.MigrateAsync();
-            // }
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("CREATE EXTENSION IF NOT EXISTS unaccent;");
+            }
+            catch (System.Exception ex)
+            {
+                System.Console.WriteLine($"⚠️ Warning: Cannot auto-enable unaccent extension: {ex.Message}");
+            }
 
             // Seed Users if empty
             if (!await context.Users.AnyAsync())

@@ -78,7 +78,17 @@ import requests
 # ─── Model Management ──────────────────────────────────────────────────────
 class AIModelManager:
     def __init__(self):
-        self.device = torch.device("cuda" if torch.device("cuda" if torch.cuda.is_available() else "cpu") else "cpu")
+        # Safe device selection with lazy-init test
+        device_str = "cpu"
+        if torch.cuda.is_available():
+            try:
+                # Force lazy initialization to verify if CUDA compiles and works
+                test_t = torch.zeros(1).cuda()
+                device_str = "cuda"
+            except (AssertionError, Exception):
+                device_str = "cpu"
+        self.device = torch.device(device_str)
+        logger.info(f"🤖 AI model manager initialized using device: {self.device}")
         self.model = None
         self.mapping = None
         self.sentiment_data = None

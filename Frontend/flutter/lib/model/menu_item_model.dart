@@ -13,6 +13,7 @@ class MenuItemModel {
   final String imageUrl;
   final bool isAvailable;
   final bool isBestSeller;
+  final String restaurantName;
 
   MenuItemModel({
     required this.id,
@@ -25,6 +26,7 @@ class MenuItemModel {
     required this.imageUrl,
     this.isAvailable = true,
     this.isBestSeller = false,
+    this.restaurantName = "",
   });
 
   factory MenuItemModel.fromJson(Map<String, dynamic> json) {
@@ -37,6 +39,7 @@ class MenuItemModel {
     final rId = (json['restaurantId'] ?? json['RestaurantId'] ?? '').toString();
     final avail = json['isAvailable'] ?? json['IsAvailable'] ?? true;
     final best = json['isBestSeller'] ?? json['IsBestSeller'] ?? false;
+    final rName = (json['restaurantName'] ?? json['RestaurantName'] ?? json['restaurant']?['name'] ?? json['Restaurant']?['Name'] ?? '').toString();
 
     // Xử lý Category Name
     String catName = "Món chính";
@@ -60,6 +63,7 @@ class MenuItemModel {
       imageUrl: img,
       isAvailable: avail == true || avail == 1 || avail == "true",
       isBestSeller: best == true || best == 1 || best == "true",
+      restaurantName: rName,
     );
   }
 

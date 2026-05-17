@@ -181,6 +181,17 @@ class _ItemDetailViewState extends State<ItemDetailView> {
                             fontWeight: FontWeight.w800,
                           ),
                         ),
+                        if (widget.itemObj['restaurant_name']?.toString().isNotEmpty == true) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            "Quán: ${widget.itemObj['restaurant_name']}",
+                            style: TextStyle(
+                              color: TColor.primary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 8),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
