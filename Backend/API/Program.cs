@@ -23,8 +23,10 @@ builder.Services.AddDbContext<FoodAppDbContext>(options =>
 
 
 builder.Services.AddScoped<ITrackingService, TrackingService>();
+builder.Services.AddScoped<FoodImageUrlSyncService>();
 builder.Services.AddScoped<AICore.RecommendationEngine>();
 builder.Services.AddMemoryCache(); // Đăng ký Memory Cache cho Redis Caching thay thế
+builder.Services.AddHttpClient();
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>

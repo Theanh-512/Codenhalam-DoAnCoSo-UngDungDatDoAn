@@ -33,30 +33,30 @@ namespace API.Controllers
             return await _context.Restaurants.ToListAsync();
         }
 
-        // GET: api/Restaurants/{id}/menu
+        // GET: api/Restaurants/{id}/menu — DTO phẳng (tránh vòng JSON + imageUrl rõ ràng).
         [HttpGet("{id}/menu")]
-        public async Task<ActionResult<IEnumerable<FoodItem>>> GetMenu(int id)
+        public async Task<ActionResult> GetMenu(int id)
         {
             var menu = await _context.FoodItems
                 .AsNoTracking()
-                .Include(f => f.Category)
                 .Where(f => f.RestaurantId == id && f.IsAvailable)
-                .Select(f => new FoodItem {
-                    Id = f.Id,
-                    Name = f.Name,
-                    Description = f.Description,
-                    Price = f.Price,
-                    ImageUrl = f.ImageUrl,
-                    CategoryId = f.CategoryId,
-                    RestaurantId = f.RestaurantId,
-                    Rating = f.Rating,
-                    Category = f.Category,
-                    IsAvailable = f.IsAvailable,
-                    CreatedDate = f.CreatedDate
+                .OrderBy(f => f.Name)
+                .Select(f => new
+                {
+                    id = f.Id,
+                    name = f.Name ?? "",
+                    description = f.Description ?? "",
+                    price = f.Price,
+                    imageUrl = f.ImageUrl ?? "",
+                    restaurantId = f.RestaurantId,
+                    isAvailable = f.IsAvailable,
+                    rating = f.Rating,
+                    categoryId = f.CategoryId,
+                    category = f.Category != null ? f.Category.Name : "",
                 })
                 .ToListAsync();
 
-            return menu ?? new List<FoodItem>();
+            return Ok(menu);
         }
 
         // POST: api/Restaurants/{id}/menu
