@@ -9,6 +9,7 @@ import 'package:flutter_food_app/view/home/widget/banner_slider.dart';
 import 'package:flutter_food_app/view/map/map_picker_view.dart';
 import 'package:flutter_food_app/common_widget/app_search_bar.dart';
 import 'package:flutter_food_app/common/cart_nav.dart';
+import 'package:flutter_food_app/view/ai/ai_recommendation_screen.dart';
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
 
@@ -166,7 +167,14 @@ class _HomeViewState extends State<HomeView> {
                     _buildServiceItem(Icons.auto_awesome, "AI Camera", Colors.deepOrange, () {
                       AppSearchBar.openImageSearch(context);
                     }),
-                    _buildServiceItem(Icons.motorcycle, "Xe máy", Colors.green, () {}),
+                    _buildServiceItem(Icons.psychology_alt, "AI Gợi ý", Colors.purple, () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AiRecommendationScreen(),
+                        ),
+                      );
+                    }),
                     _buildServiceItem(Icons.more_horiz, "Thêm", Colors.grey, () {}),
                   ],
                 ),

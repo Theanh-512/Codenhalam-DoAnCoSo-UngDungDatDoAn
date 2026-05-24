@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_food_app/common/color_extension.dart';
-import 'package:flutter_food_app/features/home/food_recognition_screen.dart';
+import 'package:flutter_food_app/view/ai/food_recognition_screen.dart';
 import 'package:flutter_food_app/view/search/search_view.dart';
 
 /// Thanh tìm kiếm thống nhất toàn app.

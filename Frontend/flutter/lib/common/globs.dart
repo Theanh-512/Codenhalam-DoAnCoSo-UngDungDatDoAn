@@ -5,25 +5,29 @@ class Globs {
   static const String loopbackHost = '127.0.0.1';
   static const String androidEmulatorHost = '10.0.2.2';
   static const String port = '5149';
+  static const String aiPort = '8000';
 
   static const String _apiHostOverride = String.fromEnvironment(
     'API_HOST',
     defaultValue: '',
   );
 
-  static String get baseUrl {
-    if (_apiHostOverride.isNotEmpty) {
-      return 'http://$_apiHostOverride:$port';
-    }
-    if (kIsWeb) {
-      return 'http://$loopbackHost:$port';
-    }
-
+  static String _resolveHost() {
+    if (_apiHostOverride.isNotEmpty) return _apiHostOverride;
+    if (kIsWeb) return loopbackHost;
     if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://$androidEmulatorHost:$port';
+      return androidEmulatorHost;
     }
-    return 'http://$loopbackHost:$port';
+    return loopbackHost;
   }
+
+  static String get baseUrl => 'http://${_resolveHost()}:$port';
+
+  static String get aiServiceBaseUrl => 'http://${_resolveHost()}:$aiPort';
+
+  static String get recognizeFoodUrl => '$aiServiceBaseUrl/api/ai/recognize-food';
+  static String recommendUrl(int userId) =>
+      '$baseUrl/api/Recommendations/$userId';
 
   static String get loginUrl => '$baseUrl/api/Users/login';
   static String get registerUrl => '$baseUrl/api/Users/register';
