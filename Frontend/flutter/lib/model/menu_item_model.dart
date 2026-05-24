@@ -113,17 +113,45 @@ class MenuItemModel {
       final url = Uri.parse(Globs.searchUrl).replace(
         queryParameters: {'q': query},
       );
+      print("🔎 Search món: $url");
       final res = await http.get(url).timeout(const Duration(seconds: 15));
-      if (res.statusCode == 200) {
-        final Map<String, dynamic> data = jsonDecode(res.body);
-        final List foodList = data['foodItems'] ?? data['FoodItems'] ?? [];
-        return foodList
-            .map((e) => MenuItemModel.fromJson(e as Map<String, dynamic>))
-            .where((m) => m.name.isNotEmpty)
-            .toList();
+      if (res.statusCode != 200) {
+        print("❌ Search lỗi HTTP ${res.statusCode}: ${res.body}");
+        return [];
       }
-    } catch (_) {}
-    return [];
+
+      final decoded = jsonDecode(res.body);
+      if (decoded is! Map<String, dynamic>) {
+        print("❌ Search trả dữ liệu không hợp lệ: $decoded");
+        return [];
+      }
+      final raw = decoded['foodItems'] ?? decoded['FoodItems'];
+      if (raw is! List) {
+        print("⚠️ Search không có 'foodItems'. Keys: ${decoded.keys}");
+        return [];
+      }
+
+      final out = <MenuItemModel>[];
+      var failed = 0;
+      for (final e in raw) {
+        if (e is! Map) {
+          failed++;
+          continue;
+        }
+        try {
+          final m = MenuItemModel.fromJson(Map<String, dynamic>.from(e));
+          if (m.name.isNotEmpty) out.add(m);
+        } catch (err) {
+          failed++;
+          print("⚠️ Bỏ qua món parse lỗi: $err — data=$e");
+        }
+      }
+      print("✅ Search '$query' → ${out.length} món ($failed bỏ qua)");
+      return out;
+    } catch (e, st) {
+      print("❌ MenuItemModel.search exception: $e\n$st");
+      return [];
+    }
   }
 
   static Future<List<MenuItemModel>> fetchByCategory(String categoryName) async {

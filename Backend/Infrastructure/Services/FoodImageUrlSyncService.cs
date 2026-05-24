@@ -22,16 +22,21 @@ public class FoodImageUrlSyncService
             ["Pho"] = new[] { "pho", "phở", "pho bo", "phở bò", "phở & bún", "bun", "bún" },
             ["banh beo"] = new[] { "Banh beo", "bánh bèo" },
             ["Pizza"] = new[] { "pizza", "margherita", "hải sản", "hai san", "bbq chicken", "mì ý", "mi y", "đồ âu", "do au" },
-            ["Com tam"] = new[] { "com tam", "cơm tấm", "co tam", "cơm", "com", "xoi xeo", "xôi xéo" },
+            ["Com tam"] = new[] { "com tam", "cơm tấm", "co tam", "cơm", "com" },
+            ["Xoi xeo"] = new[] { "xoi xeo", "xôi xéo", "xoi", "xôi" },
+            ["Mi quang"] = new[] { "mi quang", "mì quảng", "mì quang", "mi quảng" },
+            ["Goi cuon"] = new[] { "goi cuon", "gỏi cuốn", "goi cuốn", "gỏi cuon" },
+            ["Banh chung"] = new[] { "banh chung", "bánh chưng", "banh chưng", "bánh chung" },
+            ["Banh tet"] = new[] { "banh tet", "bánh tét", "banh tét", "bánh tet" },
+            ["Banh mi"] = new[] { "banh mi", "bánh mì", "banh mì", "bánh mi" },
+            ["Banh cong"] = new[] { "banh cong", "bánh cống", "banh cống", "bánh cong" },
+            ["Banh tieu"] = new[] { "banh tieu", "bánh tiêu", "banh tiêu", "bánh tieu" },
+            ["Banh khot"] = new[] { "banh khot", "bánh khọt", "banh khọt", "bánh khot" },
         };
 
     /// <summary>Folder không có trên Storage → folder thay thế (giữ số file .jpg).</summary>
     private static readonly (string WrongFolder, string RightFolder)[] FolderUrlRemaps =
-    {
-        ("Xoi xeo", "Com tam"),
-        ("xoi xeo", "Com tam"),
-        ("Xoi Xeo", "Com tam"),
-    };
+        System.Array.Empty<(string, string)>();
 
     private readonly FoodAppDbContext _context;
     private readonly IHttpClientFactory _httpClientFactory;

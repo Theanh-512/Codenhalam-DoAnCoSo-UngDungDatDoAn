@@ -164,20 +164,8 @@ class _SearchViewState extends State<SearchView> {
                   
                   return CustomScrollView(
                     slivers: [
-                      if (_restaurantResults.isNotEmpty) ...[
-                        _buildSectionHeader("Nhà hàng"),
-                        SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                              final res = _restaurantResults[index];
-                              return _buildRestaurantTile(res);
-                            },
-                            childCount: _restaurantResults.length,
-                          ),
-                        ),
-                      ],
                       if (_foodResults.isNotEmpty) ...[
-                        _buildSectionHeader("Món ăn"),
+                        _buildSectionHeader("Món ăn (${_foodResults.length})"),
                         SliverList(
                           delegate: SliverChildBuilderDelegate(
                             (context, index) {
@@ -185,6 +173,18 @@ class _SearchViewState extends State<SearchView> {
                               return _buildFoodTile(item, currencyFormatter);
                             },
                             childCount: _foodResults.length,
+                          ),
+                        ),
+                      ],
+                      if (_restaurantResults.isNotEmpty) ...[
+                        _buildSectionHeader("Nhà hàng (${_restaurantResults.length})"),
+                        SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              final res = _restaurantResults[index];
+                              return _buildRestaurantTile(res);
+                            },
+                            childCount: _restaurantResults.length,
                           ),
                         ),
                       ],
