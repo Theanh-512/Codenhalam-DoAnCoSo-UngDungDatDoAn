@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Infrastructure.Data;
@@ -10,6 +11,7 @@ using System.Linq;
 namespace API.Controllers
 {
     [ApiController]
+    [Authorize(Roles = "Admin")]
     [Route("api/admin")]
     public class AdminController : ControllerBase
     {
@@ -126,10 +128,16 @@ namespace API.Controllers
                 ("/food-images/Banh%20Beo/", "/food-images/banh%20beo/"),
                 ("/food-images/Pho/", "/food-images/pho/"),
                 ("/food-images/Pizza/", "/food-images/pizza/"),
-                ("/food-images/Xoi%20xeo/", "/food-images/Com%20tam/"),
-                ("/food-images/xoi%20xeo/", "/food-images/Com%20tam/"),
-                ("/food-images/Xoi%20Xeo/", "/food-images/Com%20tam/"),
                 ("/food-images/com%20tam/", "/food-images/Com%20tam/"),
+                ("/food-images/xoi%20xeo/", "/food-images/Xoi%20xeo/"),
+                ("/food-images/mi%20quang/", "/food-images/Mi%20quang/"),
+                ("/food-images/goi%20cuon/", "/food-images/Goi%20cuon/"),
+                ("/food-images/banh%20chung/", "/food-images/Banh%20chung/"),
+                ("/food-images/banh%20tet/", "/food-images/Banh%20tet/"),
+                ("/food-images/banh%20mi/", "/food-images/Banh%20mi/"),
+                ("/food-images/banh%20cong/", "/food-images/Banh%20cong/"),
+                ("/food-images/banh%20tieu/", "/food-images/Banh%20tieu/"),
+                ("/food-images/banh%20khot/", "/food-images/Banh%20khot/"),
             };
 
             var food = 0;

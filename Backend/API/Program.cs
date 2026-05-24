@@ -1,31 +1,39 @@
+using API.Auth;
+using Application.Interfaces;
 using Infrastructure.Data;
 using Infrastructure.Services;
-using Application.Interfaces;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// CORS - mở rộng cho dev. Production sẽ siết WithOrigins(...).
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",
-        builder =>
-        {
-            builder.AllowAnyOrigin()
-                   .AllowAnyMethod()
-                   .AllowAnyHeader();
-        });
+        b => b.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 });
 
+// DB
 builder.Services.AddDbContext<FoodAppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
            .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
+// JWT
+builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
+var jwt = new JwtTokenService(builder.Configuration);
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = jwt.GetValidationParameters();
+        options.SaveToken = true;
+    });
+builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<ITrackingService, TrackingService>();
 builder.Services.AddScoped<FoodImageUrlSyncService>();
 builder.Services.AddScoped<AICore.RecommendationEngine>();
-builder.Services.AddMemoryCache(); // Đăng ký Memory Cache cho Redis Caching thay thế
+builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient();
 
 builder.Services.AddControllers()
@@ -35,29 +43,27 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
     });
 
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
 app.UseHttpsRedirection();
+app.UseCors("AllowAll");
 
-app.UseCors("AllowAll"); // Enable CORS
-
+app.UseAuthentication();
 app.UseAuthorization();
-app.MapControllers(); // Enable controllers
 
-// Automatically apply migrations and seed data
+app.MapControllers();
+
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    try 
+    try
     {
         var context = services.GetRequiredService<FoodAppDbContext>();
         await SeedData.InitializeAsync(context);
@@ -70,4 +76,3 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
-

@@ -31,6 +31,8 @@ Thumbs.db
 *.pfx
 *.keystore
 *.jks
+Backend/API/appsettings.Development.json
+Backend/API/appsettings.Local.json
 
 # Logs
 *.log
@@ -43,6 +45,12 @@ yarn-error.log*
 *.pyc
 *.pyo
 *.pyd
+
+# Python virtualenvs
+venv/
+.venv/
+env/
+Backend/AIService/venv/
 
 # AI Models
 checkpoints/
