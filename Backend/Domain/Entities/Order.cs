@@ -10,8 +10,22 @@ namespace Domain.Entities
         
         public DateTime OrderDate { get; set; } = DateTime.UtcNow;
         public decimal TotalAmount { get; set; }
-        public string Status { get; set; } = "Pending"; // Pending, Completed, Cancelled
+        public string Status { get; set; } = "Pending"; // Pending, Confirmed, Preparing, Delivering, Completed, Cancelled
         public string DeliveryAddress { get; set; } = string.Empty;
+
+        // Thông tin người nhận (Flutter checkout gửi lên).
+        public string ReceiverName { get; set; } = string.Empty;
+        public string ReceiverPhone { get; set; } = string.Empty;
+
+        // Toạ độ giao hàng (optional).
+        public double? DeliveryLatitude { get; set; }
+        public double? DeliveryLongitude { get; set; }
+
+        // cod | ewallet | bank
+        public string PaymentMethod { get; set; } = "cod";
+
+        // Mã voucher đã áp dụng (nếu có).
+        public string VoucherCode { get; set; } = string.Empty;
 
         public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
     }
