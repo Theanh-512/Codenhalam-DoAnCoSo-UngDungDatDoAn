@@ -256,11 +256,12 @@ class TimeDistanceWeightedLSTM(LongTermPreference):
         c = torch.zeros(B, self.hidden_dim, device=device)
 
         hidden_states = []
+        delta_t_dummy = torch.zeros(B, 1, device=device)
         for t in range(L):
             x_t = x[:, t, :]  # (B, D)
             # Legacy: không có e_time → dùng zero padding
             x_t_padded = x_t  # input_dim = item_dim, time_dim=0
-            h, c = self.lstm_cell(x_t_padded, h, c)
+            h, c = self.lstm_cell(x_t_padded, delta_t_dummy, h, c)
             hidden_states.append(h.unsqueeze(1))
 
         H = torch.cat(hidden_states, dim=1)   # (B, L, H)

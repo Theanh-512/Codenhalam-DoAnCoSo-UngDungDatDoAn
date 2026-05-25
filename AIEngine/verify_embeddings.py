@@ -49,7 +49,7 @@ def check(name: str, tensor: torch.Tensor, expected: tuple):
 def verify_embeddings():
     section("1. Import các module")
     try:
-        from models.long_term  import LongTermPreference, CustomLSTMCell, JaccardTimeWeighter, DistanceWeighter
+        from models.long_term  import LongTermPreference, TimeLSTMCell, JaccardTimeWeighter, DistanceWeighter
         from models.short_term import ShortTermPreference, VanillaAttentionAggregator
         from models.multimodal import ImageFeatureExtractor
         from models.scr_model  import SCRMultimodalRecommender, SCRMultimodalRecommenderLegacy
@@ -63,6 +63,7 @@ def verify_embeddings():
     user_ids        = torch.randint(0, NUM_USERS, (BATCH,))
     long_item_ids   = torch.randint(0, NUM_ITEMS, (BATCH, SEQ_LEN))
     long_time_ids   = torch.randint(0, NUM_SLOTS, (BATCH, SEQ_LEN))
+    delta_ts        = torch.randn(BATCH, SEQ_LEN, 1)
     history_slots   = torch.randint(0, 2, (BATCH, SEQ_LEN, NUM_SLOTS)).float()
     current_slots   = torch.randint(0, 2, (BATCH, NUM_SLOTS)).float()
     history_coords  = torch.randn(BATCH, SEQ_LEN, 2)
@@ -70,6 +71,7 @@ def verify_embeddings():
     short_item_ids  = torch.randint(0, NUM_ITEMS, (BATCH, SESSION))
     padding_mask    = torch.zeros(BATCH, SESSION, dtype=torch.bool)
     image_tensors   = torch.randn(BATCH, 3, 224, 224)
+    review_scores   = torch.randn(BATCH, 1)
 
     check("user_ids",       user_ids,       (BATCH,))
     check("long_item_ids",  long_item_ids,  (BATCH, SEQ_LEN))
@@ -77,6 +79,8 @@ def verify_embeddings():
     check("current_slots",  current_slots,  (BATCH, NUM_SLOTS))
     check("history_coords", history_coords, (BATCH, SEQ_LEN, 2))
     check("image_tensors",  image_tensors,  (BATCH, 3, 224, 224))
+    check("delta_ts",       delta_ts,       (BATCH, SEQ_LEN, 1))
+    check("review_scores",  review_scores,  (BATCH, 1))
 
     # ─── Test JaccardTimeWeighter ─────────────────────────────────────────
     section("3. JaccardTimeWeighter — γ_{i,j}")
@@ -94,14 +98,15 @@ def verify_embeddings():
     print(f"  INFO: dist_weights min={weights.min():.3f}, max={weights.max():.3f} (phải > 0)")
     assert weights.min() > 0, "Distance weights phải dương!"
 
-    # ─── Test CustomLSTMCell ──────────────────────────────────────────────
-    section("5. CustomLSTMCell — f_t, i_t, o_t gates")
+    # ─── Test TimeLSTMCell ──────────────────────────────────────────────
+    section("5. TimeLSTMCell — f_t, i_t, o_t gates")
     input_dim = ITEM_DIM + TIME_DIM
-    cell  = CustomLSTMCell(input_dim=input_dim, hidden_dim=LSTM_H)
+    cell  = TimeLSTMCell(input_dim=input_dim, hidden_dim=LSTM_H)
     x_t   = torch.randn(BATCH, input_dim)
+    dt_t  = torch.randn(BATCH, 1)
     h_0   = torch.zeros(BATCH, LSTM_H)
     c_0   = torch.zeros(BATCH, LSTM_H)
-    h1, c1 = cell(x_t, h_0, c_0)
+    h1, c1 = cell(x_t, dt_t, h_0, c_0)
     check("h_t (LSTM hidden)", h1, (BATCH, LSTM_H))
     check("c_t (LSTM cell)",   c1, (BATCH, LSTM_H))
 
@@ -114,7 +119,13 @@ def verify_embeddings():
 
     long_mod = LongTermPreference(ITEM_DIM, TIME_DIM, LSTM_H, NUM_SLOTS)
     u_long, gamma_out, dist_out = long_mod(
-        e_long, e_time_l, history_slots, current_slots, history_coords, current_coord
+        e_items=e_long,
+        e_times=e_time_l,
+        delta_ts=delta_ts,
+        history_slots=history_slots,
+        current_slots=current_slots,
+        history_coords=history_coords,
+        current_coord=current_coord
     )
     check("U_long", u_long, (BATCH, LSTM_H))
 
@@ -155,21 +166,24 @@ def verify_embeddings():
     )
     model.eval()
     with torch.no_grad():
-        log_probs, attn_w = model(
+        log_probs, attn_w, fusion_w = model(
             user_ids       = user_ids,
             long_item_ids  = long_item_ids,
             long_time_ids  = long_time_ids,
+            delta_ts       = delta_ts,
             history_slots  = history_slots,
             current_slots  = current_slots,
             history_coords = history_coords,
             current_coord  = current_coord,
             short_item_ids = short_item_ids,
             image_tensors  = image_tensors,
+            review_scores  = review_scores,
             padding_mask   = padding_mask,
         )
 
     check("log_probs  (output)",    log_probs, (BATCH, NUM_ITEMS))
     check("attn_weights (short)", attn_w,    (BATCH, SESSION, SESSION))
+    check("fusion_weights",       fusion_w,  (BATCH, 4, 1))
 
     # Kiểm tra NLL Loss
     section("11. NLL Loss Computation")

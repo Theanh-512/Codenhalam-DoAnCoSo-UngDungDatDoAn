@@ -64,6 +64,10 @@ class SCRTrainer:
 
     def _forward_batch(self, batch: dict):
         b = self._batch_to_device(batch)
+        B = b['user_id'].shape[0]
+        # Mặc định review_scores (B, 1) là zeros nếu không có trong batch
+        review_scores = b.get('review_scores', torch.zeros((B, 1), device=self.device))
+        
         log_probs, attn, fusion = self.model(
             user_ids       = b['user_id'],
             long_item_ids  = b['long_item_ids'],
@@ -75,6 +79,7 @@ class SCRTrainer:
             current_coord  = b['current_coord'],
             short_item_ids = b['short_item_ids'],
             image_tensors  = b['image_tensor'],
+            review_scores  = review_scores,
             padding_mask   = b['padding_mask'],
         )
         return log_probs, b['target_item_id']

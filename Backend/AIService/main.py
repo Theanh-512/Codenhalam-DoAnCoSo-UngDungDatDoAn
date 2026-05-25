@@ -23,6 +23,10 @@ from torchvision import models, transforms
 import io
 import pandas as pd
 import numpy as np
+try:
+    import timm
+except ImportError:
+    timm = None
 
 # ─── Setup Path ───────────────────────────────────────────────────────────
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -157,6 +161,36 @@ class AIModelManager:
         except Exception as e:
             logger.error(f"❌ Error loading model: {e}")
 
+    def _get_user_sentiment_score(self, user_id):
+        try:
+            import psycopg2
+            conn_str = "host=aws-1-ap-southeast-2.pooler.supabase.com port=5432 dbname=postgres user=postgres.wbusmwbzqlkyhxtoghsl password=Codenhalam123456 sslmode=require"
+            conn = psycopg2.connect(conn_str)
+            cur = conn.cursor()
+            
+            # Lấy điểm SentimentScore trung bình từ các nhà hàng mà user này đã từng đánh giá
+            cur.execute("""
+                SELECT AVG(r."SentimentScore") 
+                FROM "Reviews" rev
+                JOIN "Restaurants" r ON rev."RestaurantId" = r."Id"
+                WHERE rev."UserId" = %s
+            """, (user_id,))
+            res = cur.fetchone()
+            user_score = res[0] if res and res[0] is not None else None
+            
+            # Nếu user chưa có lịch sử đánh giá, lấy trung bình SentimentScore của tất cả nhà hàng làm fallback
+            if user_score is None:
+                cur.execute('SELECT AVG("SentimentScore") FROM "Restaurants" WHERE "SentimentScore" IS NOT NULL')
+                res = cur.fetchone()
+                user_score = res[0] if res and res[0] is not None else 0.5
+                
+            cur.close()
+            conn.close()
+            return float(user_score)
+        except Exception as e:
+            logger.warning(f"⚠️ Error getting user sentiment context: {e}. Fallback to 0.5")
+            return 0.5
+
     @torch.no_grad()
     def predict(self, user_id, lat, lng, time_str, dow):
         if self.model is None or self.mapping is None:
@@ -182,6 +216,10 @@ class AIModelManager:
         current_coord = torch.tensor([[lat, lng]], dtype=torch.float32).to(self.device)
         image_dummy   = torch.randn(B, 3, 224, 224).to(self.device)
 
+        # Lấy điểm cảm xúc Google Maps thực tế của user từ cơ sở dữ liệu
+        user_sentiment = self._get_user_sentiment_score(user_id)
+        logger.info(f"🔮 User {user_id} active sentiment context: {user_sentiment:.4f}")
+
         log_probs, _, fusion_weights = self.model(
             user_ids       = torch.tensor([user_id % DATA_CONFIG["num_users"]]).to(self.device),
             long_item_ids  = long_item_ids,
@@ -193,7 +231,7 @@ class AIModelManager:
             current_coord  = current_coord,
             short_item_ids = short_item_ids,
             image_tensors  = image_dummy,
-            review_scores  = torch.tensor([[0.5]]).to(self.device) # Mặc định 0.5 cho context
+            review_scores  = torch.tensor([[user_sentiment]]).to(self.device) # Điểm cảm xúc động từ Google Maps
         )
 
         probs = torch.exp(log_probs).squeeze(0)
@@ -292,14 +330,43 @@ class FoodRecognitionManager:
                 checkpoint = torch.load(self.weight_path, map_location=self.device)
                 self.classes = checkpoint['classes']
                 
-                # Khởi tạo EfficientNetV2_S (Kiến trúc đã dùng trên Colab)
-                self.model = models.efficientnet_v2_s(weights=None)
-                num_ftrs = self.model.classifier[1].in_features
-                self.model.classifier[1] = nn.Linear(num_ftrs, len(self.classes))
+                # Tự động nhận diện kiến trúc mô hình (Auto-detection)
+                arch = checkpoint.get('arch', 'efficientnet_v2_s')
+                
+                if 'arch' not in checkpoint and 'model_state_dict' in checkpoint:
+                    state_keys = checkpoint['model_state_dict'].keys()
+                    # Nhận diện ConvNeXt V2 dựa trên sự hiện diện của lớp chuẩn hóa GRN đặc trưng
+                    if any("grn" in k for k in state_keys):
+                        arch = 'convnext_v2'
+                    # Nhận diện ConvNeXt Tiny V1 dựa trên sự hiện diện của layers đặc trưng
+                    elif any("stages" in k or "layer_scale" in k for k in state_keys):
+                        arch = 'convnext_tiny'
+                    elif any("features" in k for k in state_keys):
+                        arch = 'efficientnet_v2_s'
+                
+                logger.info(f"🔍 Đang tự động phân tích cấu trúc mô hình: Phát hiện thấy kiến trúc {arch.upper()}")
+                
+                if arch == 'convnext_v2':
+                    if timm is None:
+                        raise ImportError("Thư viện 'timm' chưa được cài đặt để nạp mô hình ConvNeXt V2! Hãy chạy 'pip install timm'.")
+                    # Khởi tạo ConvNeXt V2 Tiny từ thư viện timm
+                    self.model = timm.create_model('convnextv2_tiny', pretrained=False, num_classes=len(self.classes))
+                elif arch == 'convnext_tiny':
+                    self.model = models.convnext_tiny(weights=None)
+                    num_ftrs = self.model.classifier[2].in_features
+                    self.model.classifier[2] = nn.Linear(num_ftrs, len(self.classes))
+                elif arch == 'efficientnet_v2_m':
+                    self.model = models.efficientnet_v2_m(weights=None)
+                    num_ftrs = self.model.classifier[1].in_features
+                    self.model.classifier[1] = nn.Linear(num_ftrs, len(self.classes))
+                else: # Mặc định là efficientnet_v2_s
+                    self.model = models.efficientnet_v2_s(weights=None)
+                    num_ftrs = self.model.classifier[1].in_features
+                    self.model.classifier[1] = nn.Linear(num_ftrs, len(self.classes))
                 
                 # Nạp trọng số từ file .pth
                 self.model.load_state_dict(checkpoint['model_state_dict'])
-                logger.info(f"✅ Đã nhúng thành công Model mới: {self.model_filename}")
+                logger.info(f"✅ Đã nhúng thành công Model mới ({arch.upper()}): {self.model_filename}")
                 logger.info(f"✅ Đã nạp {len(self.classes)} nhãn món ăn từ Model.")
                 
                 self.model.to(self.device)
