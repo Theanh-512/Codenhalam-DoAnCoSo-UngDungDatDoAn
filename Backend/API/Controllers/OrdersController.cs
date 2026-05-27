@@ -103,24 +103,81 @@ namespace API.Controllers
             });
         }
 
-        /// <summary>Lấy lịch sử đơn của user. Chỉ chính chủ hoặc admin xem được.</summary>
+        /// <summary>
+        /// Shortcut: lịch sử đơn của user hiện tại lấy từ JWT.
+        /// Tránh phải nhúng userId vào URL từ phía client.
+        /// </summary>
+        [Authorize]
+        [HttpGet("user")]
+        public Task<ActionResult> GetMyOrders()
+        {
+            var me = CurrentUser.GetUserId(User);
+            if (me == null) return Task.FromResult<ActionResult>(Unauthorized());
+            return GetUserOrders(me.Value);
+        }
+
+        /// <summary>
+        /// Lấy lịch sử đơn của user. Chỉ chính chủ hoặc admin xem được.
+        /// Trả DTO phẳng để Flutter UI dễ binding (camelCase đã được
+        /// Program.cs cấu hình mặc định): order kèm restaurantName + items
+        /// kèm name (từ FoodItem) + lineTotal (= unitPrice × quantity).
+        /// </summary>
         [Authorize]
         [HttpGet("user/{userId}")]
-        public async Task<ActionResult<IEnumerable<Order>>> GetUserOrders(int userId)
+        public async Task<ActionResult> GetUserOrders(int userId)
         {
             var me = CurrentUser.GetUserId(User);
             if (me == null) return Unauthorized();
             if (me.Value != userId && !User.IsInRole("Admin")) return Forbid();
 
+            // Lấy orders + items + foodItem; join FoodItem→Restaurant ở
+            // bước project để tránh round-trip thừa.
             var orders = await _context.Orders
                 .AsNoTracking()
                 .Include(o => o.OrderItems)
-                .ThenInclude(oi => oi.FoodItem)
+                    .ThenInclude(oi => oi.FoodItem)
+                        .ThenInclude(fi => fi!.Restaurant)
                 .Where(o => o.UserId == userId)
                 .OrderByDescending(o => o.OrderDate)
                 .ToListAsync();
 
-            return orders;
+            var dto = orders.Select(o =>
+            {
+                // Mỗi đơn hiện đã ràng buộc 1 nhà hàng (cart enforce); dùng
+                // FoodItem đầu tiên có Restaurant để lấy tên + ảnh quán.
+                var firstItem = o.OrderItems.FirstOrDefault(oi => oi.FoodItem?.Restaurant != null);
+                var restaurant = firstItem?.FoodItem?.Restaurant;
+
+                return new
+                {
+                    id = o.Id,
+                    orderDate = o.OrderDate,
+                    totalAmount = o.TotalAmount,
+                    status = o.Status,
+                    deliveryAddress = o.DeliveryAddress,
+                    deliveryLatitude = o.DeliveryLatitude,
+                    deliveryLongitude = o.DeliveryLongitude,
+                    receiverName = o.ReceiverName,
+                    receiverPhone = o.ReceiverPhone,
+                    paymentMethod = o.PaymentMethod,
+                    voucherCode = o.VoucherCode,
+                    restaurantId = restaurant?.Id,
+                    restaurantName = restaurant?.Name ?? string.Empty,
+                    restaurantImageUrl = restaurant?.ImageUrl ?? string.Empty,
+                    orderItems = o.OrderItems.Select(oi => new
+                    {
+                        id = oi.Id,
+                        foodItemId = oi.FoodItemId,
+                        name = oi.FoodItem?.Name ?? "(món đã ẩn)",
+                        imageUrl = oi.FoodItem?.ImageUrl ?? string.Empty,
+                        quantity = oi.Quantity,
+                        unitPrice = oi.UnitPrice,
+                        lineTotal = oi.UnitPrice * oi.Quantity,
+                    }).ToList(),
+                };
+            }).ToList();
+
+            return Ok(dto);
         }
 
         /// <summary>Tối ưu lộ trình giao hàng (Greedy TSP). Chỉ admin/shipper.</summary>
