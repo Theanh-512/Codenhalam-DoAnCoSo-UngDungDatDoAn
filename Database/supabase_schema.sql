@@ -103,7 +103,21 @@ CREATE TABLE IF NOT EXISTS public."OrderItems" (
     "UpdatedDate" TIMESTAMP WITH TIME ZONE
 );
 
--- 7. Tracking Logs (AI behavioral data - SCR Theory)
+-- 7. Reviews (đánh giá nhà hàng + sentiment cho AI)
+CREATE TABLE IF NOT EXISTS public."Reviews" (
+    "Id"             SERIAL PRIMARY KEY,
+    "UserId"         INT NOT NULL REFERENCES public."Users"("Id")        ON DELETE CASCADE,
+    "RestaurantId"   INT NOT NULL REFERENCES public."Restaurants"("Id")  ON DELETE CASCADE,
+    "OrderId"        INT,
+    "Rating"         INT  NOT NULL DEFAULT 5,
+    "Comment"        TEXT NOT NULL DEFAULT '',
+    "SentimentScore" DOUBLE PRECISION,
+    "CreatedDate"    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc', now()),
+    "UpdatedDate"    TIMESTAMP WITH TIME ZONE,
+    CONSTRAINT "CK_Reviews_Rating" CHECK ("Rating" BETWEEN 1 AND 5)
+);
+
+-- 8. Tracking Logs (AI behavioral data - SCR Theory)
 CREATE TABLE IF NOT EXISTS public."TrackingLogs" (
     "Id"           SERIAL PRIMARY KEY,
     "UserId"       INT REFERENCES public."Users"("Id") ON DELETE SET NULL,
@@ -128,6 +142,8 @@ CREATE INDEX IF NOT EXISTS "IX_OrderItems_OrderId"       ON public."OrderItems"(
 CREATE INDEX IF NOT EXISTS "IX_Orders_UserId"            ON public."Orders"("UserId");
 CREATE INDEX IF NOT EXISTS "IX_TrackingLogs_RestaurantId" ON public."TrackingLogs"("RestaurantId");
 CREATE INDEX IF NOT EXISTS "IX_TrackingLogs_UserId"      ON public."TrackingLogs"("UserId");
+CREATE INDEX IF NOT EXISTS "IX_Reviews_RestaurantId"     ON public."Reviews"("RestaurantId");
+CREATE INDEX IF NOT EXISTS "IX_Reviews_UserId"           ON public."Reviews"("UserId");
 CREATE UNIQUE INDEX IF NOT EXISTS "IX_Users_Email"       ON public."Users"(LOWER("Email"));
 
 -- ============================================================

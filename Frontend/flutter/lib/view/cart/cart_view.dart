@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_food_app/common/auth_store.dart';
 import 'package:flutter_food_app/common/checkout_prefs.dart';
@@ -27,6 +28,15 @@ class _CartViewState extends State<CartView> {
   /// cod | ewallet | bank
   String _paymentMethod = 'cod';
   bool _isCheckingOut = false;
+
+  /// delivery = giao tận nơi (mặc định) | pickup = khách tới quán lấy.
+  /// Khi pickup: phí giao hàng = 0, không cần địa chỉ giao, gửi backend
+  /// delivery_address = "Nhận tại quán: <tên quán>", delivery_lat/lng = toạ độ quán.
+  String _deliveryMode = 'delivery';
+
+  /// Thông tin quán dùng cho chế độ pickup (lấy lazy từ /api/Restaurants).
+  Map<String, dynamic>? _pickupRestaurant;
+  bool _loadingPickupInfo = false;
 
   // Voucher áp dụng cho đơn (demo: hardcode 3 mã).
   final TextEditingController _voucherCodeController = TextEditingController();
@@ -161,8 +171,66 @@ class _CartViewState extends State<CartView> {
       : (_codeToRule[_appliedVoucherCode] ?? '');
 
   double _voucherDeliveryFee() {
+    // Nhận tại quán: không phát sinh phí giao.
+    if (_deliveryMode == 'pickup') return 0;
     if (_appliedRule == 'FREESHIP') return 0;
     return _cart.deliveryFee;
+  }
+
+  bool get _isPickup => _deliveryMode == 'pickup';
+
+  /// Lazy-fetch thông tin quán (address + toạ độ) cho chế độ pickup.
+  /// Reuse GET /api/Restaurants rồi filter local — chưa có endpoint /{id}.
+  Future<void> _ensurePickupRestaurantLoaded() async {
+    if (_pickupRestaurant != null) return;
+    final rid = _cart.restaurantId.trim();
+    if (rid.isEmpty) return;
+    if (!mounted) return;
+    setState(() => _loadingPickupInfo = true);
+    try {
+      final res = await http
+          .get(Uri.parse(Globs.restaurantsUrl))
+          .timeout(const Duration(seconds: 6));
+      if (!mounted || res.statusCode != 200) return;
+      final list = jsonDecode(res.body);
+      if (list is! List) return;
+      Map<String, dynamic>? found;
+      for (final r in list) {
+        if (r is! Map) continue;
+        final id = (r['id'] ?? r['Id'] ?? '').toString();
+        if (id == rid) {
+          found = Map<String, dynamic>.from(r);
+          break;
+        }
+      }
+      if (!mounted) return;
+      setState(() => _pickupRestaurant = found);
+    } catch (_) {
+      // Bỏ qua: UI sẽ hiển thị placeholder, vẫn cho phép đặt pickup.
+    } finally {
+      if (mounted) setState(() => _loadingPickupInfo = false);
+    }
+  }
+
+  LatLng? _pickupLatLng() {
+    final r = _pickupRestaurant;
+    if (r == null) return null;
+    final lat = r['latitude'] ?? r['Latitude'];
+    final lng = r['longitude'] ?? r['Longitude'];
+    if (lat is num && lng is num) return LatLng(lat.toDouble(), lng.toDouble());
+    return null;
+  }
+
+  String _pickupRestaurantName() {
+    final r = _pickupRestaurant;
+    if (r == null) return _cart.restaurantName;
+    return (r['name'] ?? r['Name'] ?? _cart.restaurantName).toString();
+  }
+
+  String _pickupAddress() {
+    final r = _pickupRestaurant;
+    if (r == null) return '';
+    return (r['address'] ?? r['Address'] ?? '').toString();
   }
 
   double _voucherDiscountAmount() {
@@ -240,7 +308,7 @@ class _CartViewState extends State<CartView> {
       );
       return;
     }
-    if (_deliveryAddress.isEmpty) {
+    if (!_isPickup && _deliveryAddress.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Vui lòng chọn địa chỉ giao hàng trước khi thanh toán.'),
@@ -266,11 +334,31 @@ class _CartViewState extends State<CartView> {
     setState(() => _isCheckingOut = true);
     try {
       final url = Uri.parse(Globs.checkoutUrl);
+
+      // Chuẩn hoá payload theo chế độ giao/nhận.
+      // - delivery: giữ địa chỉ + toạ độ khách chọn từ MapPicker.
+      // - pickup: đặt địa chỉ giao = "Nhận tại quán: <tên>" (kèm địa chỉ
+      //   quán nếu có) và truyền toạ độ quán làm delivery_lat/lng để admin
+      //   xem được trên bản đồ. KHÔNG đụng backend.
+      final isPickup = _isPickup;
+      final pickupCoord = _pickupLatLng();
+      final pickupAddr = _pickupAddress();
+      final pickupName = _pickupRestaurantName();
+      final effectiveAddress = isPickup
+          ? (pickupAddr.isEmpty
+              ? 'Nhận tại quán: $pickupName'
+              : 'Nhận tại quán: $pickupName — $pickupAddr')
+          : _deliveryAddress;
+      final effectiveLat =
+          isPickup ? pickupCoord?.latitude : _deliveryLatLng?.latitude;
+      final effectiveLng =
+          isPickup ? pickupCoord?.longitude : _deliveryLatLng?.longitude;
+
       final body = jsonEncode({
         'total_price': _voucherTotalPrice(),
-        'delivery_address': _deliveryAddress,
-        if (_deliveryLatLng != null) 'delivery_lat': _deliveryLatLng!.latitude,
-        if (_deliveryLatLng != null) 'delivery_lng': _deliveryLatLng!.longitude,
+        'delivery_address': effectiveAddress,
+        if (effectiveLat != null) 'delivery_lat': effectiveLat,
+        if (effectiveLng != null) 'delivery_lng': effectiveLng,
         'receiver_name': name,
         'receiver_phone': phone,
         'payment_method': _paymentMethod,
@@ -302,6 +390,8 @@ class _CartViewState extends State<CartView> {
           }
         } catch (_) {}
         final paidLabel = _paymentMethodLabel(_paymentMethod);
+        // Luôn lưu địa chỉ + người nhận đã nhập để lần sau prefill, kể cả
+        // chế độ nhận tại quán (vẫn cần tên + SĐT, địa chỉ giao có thể trống).
         await CheckoutPrefs.save(
           name: name,
           phone: phone,
@@ -313,6 +403,8 @@ class _CartViewState extends State<CartView> {
         _cart.clear();
         setState(() {
           _paymentMethod = 'cod';
+          _deliveryMode = 'delivery';
+          _pickupRestaurant = null;
           _appliedVoucherCode = '';
           _voucherCodeController.clear();
         });
@@ -546,6 +638,14 @@ class _CartViewState extends State<CartView> {
               const SizedBox(height: 10),
               ..._cart.items.map(_buildCartItem),
               const SizedBox(height: 20),
+              _checkoutSectionTitle('Hình thức nhận hàng'),
+              const SizedBox(height: 10),
+              _buildDeliveryModeSelector(),
+              if (_isPickup) ...[
+                const SizedBox(height: 16),
+                _buildPickupSection(),
+              ],
+              const SizedBox(height: 20),
               _checkoutSectionTitle('Thông tin người nhận'),
               const SizedBox(height: 10),
               _buildRecipientSection(),
@@ -610,60 +710,286 @@ class _CartViewState extends State<CartView> {
           keyboardType: TextInputType.phone,
           decoration: deco('Số điện thoại'),
         ),
-        const SizedBox(height: 10),
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: _openMapPicker,
-            borderRadius: BorderRadius.circular(14),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                color: TColor.textfield,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: _deliveryAddress.isEmpty
-                      ? TColor.placeholder
-                      : TColor.primary,
-                  width: 1.5,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.location_on_rounded,
+        if (!_isPickup) ...[
+          const SizedBox(height: 10),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _openMapPicker,
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: TColor.textfield,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
                     color: _deliveryAddress.isEmpty
                         ? TColor.placeholder
-                        : TColor.red,
-                    size: 22,
+                        : TColor.primary,
+                    width: 1.5,
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      _deliveryAddress.isEmpty
-                          ? 'Địa chỉ giao hàng (chạm để chọn trên bản đồ)'
-                          : _deliveryAddress,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: _deliveryAddress.isEmpty
-                            ? TColor.placeholder
-                            : TColor.primaryText,
-                        fontWeight: _deliveryAddress.isEmpty
-                            ? FontWeight.w400
-                            : FontWeight.w600,
-                      ),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.location_on_rounded,
+                      color: _deliveryAddress.isEmpty
+                          ? TColor.placeholder
+                          : TColor.red,
+                      size: 22,
                     ),
-                  ),
-                  Icon(Icons.map_outlined,
-                      color: TColor.secondaryText, size: 22),
-                ],
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _deliveryAddress.isEmpty
+                            ? 'Địa chỉ giao hàng (chạm để chọn trên bản đồ)'
+                            : _deliveryAddress,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: _deliveryAddress.isEmpty
+                              ? TColor.placeholder
+                              : TColor.primaryText,
+                          fontWeight: _deliveryAddress.isEmpty
+                              ? FontWeight.w400
+                              : FontWeight.w600,
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Icon(Icons.map_outlined,
+                        color: TColor.secondaryText, size: 22),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ],
+    );
+  }
+
+  // ── HÌNH THỨC NHẬN HÀNG: segmented control ──
+  Widget _buildDeliveryModeSelector() {
+    Widget seg({required String value, required String label, required IconData icon}) {
+      final selected = _deliveryMode == value;
+      return Expanded(
+        child: GestureDetector(
+          onTap: () {
+            if (_deliveryMode == value) return;
+            setState(() => _deliveryMode = value);
+            if (value == 'pickup') {
+              _ensurePickupRestaurantLoaded();
+            }
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: selected ? TColor.primary : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: selected
+                  ? [
+                      BoxShadow(
+                        color: TColor.primary.withValues(alpha: 0.25),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      )
+                    ]
+                  : null,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon,
+                    color: selected ? Colors.white : TColor.secondaryText,
+                    size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: selected ? Colors.white : TColor.secondaryText,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: TColor.textfield,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          seg(
+            value: 'delivery',
+            label: 'Giao tận nơi',
+            icon: Icons.delivery_dining_rounded,
+          ),
+          seg(
+            value: 'pickup',
+            label: 'Nhận tại quán',
+            icon: Icons.store_mall_directory_rounded,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── KHỐI THÔNG TIN NHẬN TẠI QUÁN: tên + địa chỉ + mini-map ──
+  Widget _buildPickupSection() {
+    final name = _pickupRestaurantName();
+    final addr = _pickupAddress();
+    final coord = _pickupLatLng();
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: TColor.background,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: TColor.primary.withValues(alpha: 0.4), width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: TColor.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.storefront_rounded,
+                    color: TColor.primaryDark, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name.isEmpty ? 'Nhà hàng' : name,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: TColor.primaryText,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _loadingPickupInfo
+                          ? 'Đang tải thông tin quán…'
+                          : (addr.isEmpty ? 'Chưa có địa chỉ' : addr),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: TColor.secondaryText,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (coord != null)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                height: 160,
+                child: FlutterMap(
+                  options: MapOptions(
+                    initialCenter: coord,
+                    initialZoom: 16,
+                    interactionOptions: const InteractionOptions(
+                      flags: InteractiveFlag.none,
+                    ),
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.example.appfood',
+                      maxZoom: 19,
+                    ),
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: coord,
+                          width: 44,
+                          height: 44,
+                          child: Icon(
+                            Icons.location_on_rounded,
+                            size: 44,
+                            color: TColor.red,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            Container(
+              height: 70,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: TColor.textfield,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                _loadingPickupInfo
+                    ? 'Đang lấy toạ độ quán…'
+                    : 'Quán chưa có toạ độ trên bản đồ',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: TColor.secondaryText,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade50,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.amber.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.access_time_rounded,
+                    color: Colors.amber.shade800, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Vui lòng đến quán lấy hàng sau 15–20 phút khi đơn được xác nhận.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.amber.shade900,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -16,6 +16,7 @@ namespace Infrastructure.Data
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderItem> OrderItems { get; set; }
         public DbSet<TrackingLog> TrackingLogs { get; set; }
+        public DbSet<Review> Reviews { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -80,6 +81,20 @@ namespace Infrastructure.Data
             // ===== Ignore computed property (not a DB column) =====
             modelBuilder.Entity<TrackingLog>()
                 .Ignore(t => t.MealSlot);
+
+            // ===== Review → User (N-1) =====
+            modelBuilder.Entity<Review>()
+                .HasOne(r => r.User)
+                .WithMany()
+                .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // ===== Review → Restaurant (N-1) =====
+            modelBuilder.Entity<Review>()
+                .HasOne(r => r.Restaurant)
+                .WithMany()
+                .HasForeignKey(r => r.RestaurantId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }
