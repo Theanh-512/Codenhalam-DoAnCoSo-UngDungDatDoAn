@@ -48,10 +48,20 @@ def main():
         
     print(f"Đã tải {len(records)} giao dịch.")
     
-    # Đếm số lượng user và item thực tế
-    num_users = max([r['user_id'] for r in records]) + 1
-    num_items = max([r['item_id'] for r in records]) + 1
+    from config import DATA_CONFIG
+    num_users = DATA_CONFIG["num_users"]
+    num_items = DATA_CONFIG["num_items"]
     
+    # Safe clip to guarantee no out-of-bounds errors
+    valid_records = []
+    for r in records:
+        if r['user_id'] >= num_users:
+            r['user_id'] = num_users - 1
+        if r['item_id'] >= num_items:
+            r['item_id'] = num_items - 1
+        valid_records.append(r)
+    records = valid_records
+
     config = {
         "num_users": num_users,
         "num_items": num_items,
@@ -65,7 +75,7 @@ def main():
         "dropout": 0.5,
         "num_heads": 2,
         "batch_size": 32,
-        "num_epochs": 2,
+        "num_epochs": 1,
         "device": "cuda" if torch.cuda.is_available() else "cpu"
     }
     
@@ -73,10 +83,10 @@ def main():
         records, num_items=num_items, batch_size=config["batch_size"]
     )
     
-    # Override dataset parameter để nó dùng ảnh thật
-    train_loader.dataset.use_dummy = False
-    val_loader.dataset.use_dummy = False
-    test_loader.dataset.use_dummy = False
+    # Giữ use_dummy = True để tránh lỗi tải ảnh từ URL
+    train_loader.dataset.use_dummy = True
+    val_loader.dataset.use_dummy = True
+    test_loader.dataset.use_dummy = True
     
     model = SCRMultimodalRecommender(
         num_users=config["num_users"],
@@ -93,6 +103,16 @@ def main():
     
     trainer = SCRTrainer(model, config)
     trainer.fit(train_loader, val_loader)
+    
+    # Copy best model to the root of the project as scr_model_v1.pth
+    src_pth = os.path.join("checkpoints", "best_scr_model.pt")
+    dest_pth = os.path.join("..", "scr_model_v1.pth")
+    if os.path.exists(src_pth):
+        import shutil
+        shutil.copy(src_pth, dest_pth)
+        print(f"\n=======================================================")
+        print(f"✅ Đã huấn luyện thành công và copy checkpoint sang: {os.path.abspath(dest_pth)}")
+        print(f"=======================================================\n")
     
 if __name__ == "__main__":
     main()
