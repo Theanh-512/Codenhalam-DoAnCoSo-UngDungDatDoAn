@@ -19,101 +19,12 @@ class WelcomeView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const SizedBox(height: 40),
-  
-                // ── Logo + Brand ─────────────────────────────────────
-                Container(
-                  width: 90,
-                  height: 90,
-                  decoration: BoxDecoration(
-                    color: TColor.primary.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Image.asset(
-                      'assets/img/logo.png',
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
                 const SizedBox(height: 16),
   
-                Text(
-                  'FastBite',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w900,
-                    color: TColor.primaryDark,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'FOOD DELIVERY',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: TColor.primary,
-                    letterSpacing: 3,
-                  ),
-                ),
+                // ── Illustration ─────────────────────────────────────
+                _buildIllustration(size),
   
-                const SizedBox(height: 40),
-  
-                // ── Illustration placeholder ─────────────────────────
-                Container(
-                  width: size.width * 0.7,
-                  height: size.width * 0.7,
-                  decoration: BoxDecoration(
-                    color: TColor.primary.withValues(alpha: 0.06),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // Outer ring
-                        Container(
-                          width: size.width * 0.55,
-                          height: size.width * 0.55,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: TColor.primary.withValues(alpha: 0.15),
-                              width: 1.5,
-                            ),
-                          ),
-                        ),
-                        // Inner content
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text('🍜', style: const TextStyle(fontSize: 64)),
-                            const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: TColor.primary,
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: const Text(
-                                'Ngon · Nhanh · Tiện',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-  
-                const SizedBox(height: 40),
+                const SizedBox(height: 24),
   
                 // ── Tagline ──────────────────────────────────────────
                 Text(
@@ -198,6 +109,93 @@ class WelcomeView extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildIllustration(Size size) {
+    final illoSize = size.width * 0.85;
+    return SizedBox(
+      width: illoSize,
+      height: illoSize,
+      child: Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          // ── Concentric circles ────────────────────────────────────
+          Container(
+            width: illoSize,
+            height: illoSize,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: TColor.primary.withValues(alpha: 0.05),
+            ),
+          ),
+          Container(
+            width: illoSize * 0.78,
+            height: illoSize * 0.78,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: TColor.primary.withValues(alpha: 0.10),
+            ),
+          ),
+          Container(
+            width: illoSize * 0.6,
+            height: illoSize * 0.6,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: TColor.primary.withValues(alpha: 0.18),
+            ),
+          ),
+          // White ring around logo
+          Container(
+            width: illoSize * 0.42,
+            height: illoSize * 0.42,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+            ),
+          ),
+          // ── Logo + brand pill ─────────────────────────────────────
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: illoSize * 0.32,
+                height: illoSize * 0.32,
+                child: Image.asset(
+                  'assets/img/logo.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: TColor.primary,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  'FastBite',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          // ── Decorative floating icons ─────────────────────────────
+          const Positioned(top: 8,    left: 24,  child: Text('🌿', style: TextStyle(fontSize: 22))),
+          const Positioned(top: 28,   right: 30, child: Text('🍃', style: TextStyle(fontSize: 24))),
+          const Positioned(top: 70,   right: 0,  child: Text('🧂', style: TextStyle(fontSize: 22))),
+          const Positioned(bottom: 30, right: 18, child: Text('🍋', style: TextStyle(fontSize: 22))),
+          const Positioned(bottom: 0,  right: 70, child: Text('🌿', style: TextStyle(fontSize: 18))),
+          const Positioned(bottom: 30, left: 14, child: Text('🥚', style: TextStyle(fontSize: 20))),
+          const Positioned(bottom: 90, left: 0,  child: Text('🍴', style: TextStyle(fontSize: 22))),
+          const Positioned(top: 90,   left: 6,  child: Text('✨', style: TextStyle(fontSize: 14))),
+        ],
       ),
     );
   }
