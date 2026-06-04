@@ -70,7 +70,8 @@ class _AdminMenuItemsViewState extends State<AdminMenuItemsView> {
       final url = _filterRestaurantId != null && _filterRestaurantId!.isNotEmpty
           ? '${Globs.adminItemsUrl}?restaurantId=${Uri.encodeQueryComponent(_filterRestaurantId!)}'
           : Globs.adminItemsUrl;
-      final res = await http.get(Uri.parse(url));
+      final h = await AuthStore.authHeaders(jsonContent: false);
+      final res = await http.get(Uri.parse(url), headers: h);
       if (res.statusCode != 200) {
         setState(() {
           _err = Globs.apiErrorMessage(res.body);
@@ -104,7 +105,8 @@ class _AdminMenuItemsViewState extends State<AdminMenuItemsView> {
     );
     if (ok != true) return;
     try {
-      final res = await http.delete(Uri.parse(Globs.adminItemUrl(id)));
+      final h = await AuthStore.authHeaders(jsonContent: false);
+      final res = await http.delete(Uri.parse(Globs.adminItemUrl(id)), headers: h);
       if (!mounted) return;
       if (res.statusCode != 200 && res.statusCode != 204) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -293,16 +295,17 @@ class _AdminMenuItemsViewState extends State<AdminMenuItemsView> {
       };
       
       http.Response res;
+      final h = await AuthStore.authHeaders(jsonContent: true);
       if (existing == null) {
         res = await http.post(
           Uri.parse(Globs.adminItemsUrl),
-          headers: {"Content-Type": "application/json"},
+          headers: h,
           body: jsonEncode(body),
         );
       } else {
         res = await http.put(
           Uri.parse(Globs.adminItemUrl(idCtrl.text)),
-          headers: {"Content-Type": "application/json"},
+          headers: h,
           body: jsonEncode(body),
         );
       }
@@ -356,6 +359,7 @@ class _AdminMenuItemsViewState extends State<AdminMenuItemsView> {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                       child: DropdownButtonFormField<String>(
+                        isExpanded: true,
                         decoration: const InputDecoration(
                           labelText: 'Chọn nhà hàng để quản lý thực đơn',
                           filled: true,
@@ -372,7 +376,11 @@ class _AdminMenuItemsViewState extends State<AdminMenuItemsView> {
                           final id = m['id']?.toString() ?? '';
                           return DropdownMenuItem(
                             value: id,
-                            child: Text(m['name']?.toString() ?? id),
+                            child: Text(
+                              m['name']?.toString() ?? id,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           );
                         }).toList(),
                         onChanged: (v) {

@@ -108,6 +108,141 @@ namespace API.Controllers
             return await _context.Categories.ToListAsync();
         }
 
+        // --- USERS (admin) ---
+        // Frontend (admin_users_view) gọi GET /api/admin/users + PATCH /api/admin/users/{id}.
+        // User entity hiện chưa có cột IsActive → DTO trả `is_active = true` cố định,
+        // PATCH bỏ qua field is_active. Nếu sau này thêm IsActive cần migration riêng.
+        [HttpGet("users")]
+        public async Task<ActionResult> GetUsers()
+        {
+            var users = await _context.Users
+                .OrderByDescending(u => u.CreatedDate)
+                .Select(u => new
+                {
+                    id = u.Id,
+                    email = u.Email,
+                    fullname = u.FullName,
+                    phone = u.PhoneNumber,
+                    address = u.Address,
+                    role = (u.UserRole ?? "User").ToLower(),
+                    is_active = true,
+                    created_at = u.CreatedDate,
+                })
+                .ToListAsync();
+            return Ok(users);
+        }
+
+        public class UserPatchRequest
+        {
+            public string? Fullname { get; set; }
+            public string? Phone { get; set; }
+            public string? Address { get; set; }
+            public string? Role { get; set; }
+            public bool? Is_active { get; set; }
+        }
+
+        [HttpPatch("users/{id}")]
+        public async Task<ActionResult> PatchUser(int id, [FromBody] UserPatchRequest req)
+        {
+            var u = await _context.Users.FindAsync(id);
+            if (u == null) return NotFound(new { message = "Không tìm thấy người dùng" });
+
+            if (req.Fullname != null) u.FullName = req.Fullname.Trim();
+            if (req.Phone != null) u.PhoneNumber = req.Phone.Trim();
+            if (req.Address != null) u.Address = req.Address.Trim();
+            if (!string.IsNullOrWhiteSpace(req.Role))
+            {
+                var role = req.Role.Trim().ToLower();
+                u.UserRole = role == "admin" ? "Admin" : "User";
+            }
+            u.UpdatedDate = System.DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return Ok(new
+            {
+                id = u.Id,
+                email = u.Email,
+                fullname = u.FullName,
+                phone = u.PhoneNumber,
+                address = u.Address,
+                role = (u.UserRole ?? "User").ToLower(),
+                is_active = true,
+            });
+        }
+
+        // --- ORDERS (admin) ---
+        // Frontend (admin_orders_view) đọc DTO snake_case: id, total_price, status, created_at,
+        // restaurant_name, receiver_name, receiver_phone, delivery_address, items[].{name,quantity}.
+        [HttpGet("orders")]
+        public async Task<ActionResult> GetOrders()
+        {
+            var orders = await _context.Orders
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.FoodItem)
+                        .ThenInclude(f => f!.Restaurant)
+                .Include(o => o.User)
+                .OrderByDescending(o => o.OrderDate)
+                .ToListAsync();
+
+            var dto = orders.Select(o =>
+            {
+                var firstItem = o.OrderItems.FirstOrDefault(oi => oi.FoodItem?.Restaurant != null);
+                var restaurant = firstItem?.FoodItem?.Restaurant;
+                return new
+                {
+                    id = o.Id,
+                    user_id = o.UserId,
+                    user_email = o.User?.Email ?? string.Empty,
+                    created_at = o.OrderDate,
+                    status = (o.Status ?? "Pending").ToLower(),
+                    total_price = o.TotalAmount,
+                    payment_method = o.PaymentMethod ?? string.Empty,
+                    voucher_code = o.VoucherCode ?? string.Empty,
+                    receiver_name = o.ReceiverName ?? string.Empty,
+                    receiver_phone = o.ReceiverPhone ?? string.Empty,
+                    delivery_address = o.DeliveryAddress ?? string.Empty,
+                    delivery_lat = o.DeliveryLatitude,
+                    delivery_lng = o.DeliveryLongitude,
+                    restaurant_id = restaurant?.Id,
+                    restaurant_name = restaurant?.Name ?? string.Empty,
+                    items = o.OrderItems.Select(oi => new
+                    {
+                        id = oi.Id,
+                        name = oi.FoodItem?.Name ?? "(món đã ẩn)",
+                        quantity = oi.Quantity,
+                        unit_price = oi.UnitPrice,
+                        line_total = oi.UnitPrice * oi.Quantity,
+                    }).ToList(),
+                };
+            }).ToList();
+            return Ok(dto);
+        }
+
+        public class OrderPatchRequest
+        {
+            public string? Status { get; set; }
+        }
+
+        [HttpPatch("orders/{id}")]
+        public async Task<ActionResult> PatchOrder(int id, [FromBody] OrderPatchRequest req)
+        {
+            if (string.IsNullOrWhiteSpace(req.Status))
+                return BadRequest(new { message = "Thiếu trạng thái" });
+
+            var allowed = new[] { "pending", "confirmed", "preparing", "delivering", "completed", "cancelled" };
+            var s = req.Status.Trim().ToLower();
+            if (!allowed.Contains(s))
+                return BadRequest(new { message = "Trạng thái không hợp lệ" });
+
+            var order = await _context.Orders.FindAsync(id);
+            if (order == null) return NotFound(new { message = "Không tìm thấy đơn" });
+
+            order.Status = char.ToUpper(s[0]) + s.Substring(1);
+            order.UpdatedDate = System.DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { id = order.Id, status = order.Status.ToLower() });
+        }
+
         /// <summary>
         /// Đồng bộ ImageUrl từ bucket Supabase food-images (khớp tên món / danh mục).
         /// </summary>
