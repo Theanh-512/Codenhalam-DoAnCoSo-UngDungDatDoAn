@@ -1,0 +1,122 @@
+@startuml
+title Activity Diagram - Xet va trao giai thuong sau mot chang dua
+
+skinparam activity {
+  BackgroundColor #F8FBFF
+  BorderColor #2F5597
+  FontColor #1F1F1F
+}
+skinparam diamond {
+  BackgroundColor #FFF2CC
+  BorderColor #D6B656
+}
+skinparam ArrowColor #444444
+
+start
+
+partition "Trong tai / Bo phan ky thuat" {
+  :Ghi nhan ket qua chang dua;
+  note right
+    Du lieu gom:
+    - Thu tu ve dich
+    - Thoi gian ve dich
+    - Trang thai hoan tat
+  end note
+  :Gui ket qua cho Ban To chuc;
+}
+
+partition "Ban To chuc" {
+  :Tiep nhan ket qua chang;
+  :Kiem tra tinh hop le cua du lieu;
+}
+
+if (Ket qua hop le?) then (Khong)
+  partition "Ban To chuc" {
+    :Yeu cau doi chieu / dieu chinh ket qua;
+  }
+  partition "Trong tai / Bo phan ky thuat" {
+    :Cap nhat lai ket qua chang;
+  }
+  partition "Ban To chuc" {
+    :Kiem tra lai ket qua;
+  }
+else (Co)
+  partition "Ban To chuc" {
+    :Xac nhan ket qua hop le;
+  }
+endif
+
+partition "He thong" {
+  if (Loai chang dua?) then (Tinh gio)
+    :Kiem tra thoi gian toi da quy dinh;
+    if (VDV ve sau thoi gian toi da?) then (Co)
+      :Tinh thoi gian phat\n= 2 * (Thoi gian ve dich - Thoi gian toi da);
+    else (Khong)
+      :Thoi gian phat = 0;
+    endif
+
+    if (Co VDV khong hoan tat?) then (Co)
+      :Gan thoi gian phat\n= phat cua nguoi ve cuoi + 10 phut;
+    else (Khong)
+      :Khong ap dung phat\nkhong hoan tat;
+    endif
+  else (Nuoc rut)
+    :Lay bang thoi gian thuong cho top 3;
+    :Tru thoi gian thuong\ncho VDV hang 1, 2, 3;
+  endif
+
+  :Tinh thoi gian chinh thuc cua tung VDV;
+  :Xep hang ca nhan trong chang;
+  :Tinh tong thoi gian cua tung ekip;
+  :Xep hang ekip trong chang;
+  :Xac dinh VDV thang chang mac ao xanh;
+}
+
+partition "Ban To chuc" {
+  :Lap danh sach doi tuong co the nhan giai;
+}
+
+if (Dia phuong dich co trao giai?) then (Co)
+  partition "He thong" {
+    :Chon VDV hang 1 den 10;
+    :Chon ekip hang 1 den 3;
+  }
+  partition "Dia phuong dich" {
+    :Xac nhan co cau giai dia phuong;
+  }
+else (Khong)
+  partition "Ban To chuc" {
+    :Bo qua giai dia phuong;
+  }
+endif
+
+if (Co giai cua Ban To chuc / Bao tro cho chang?) then (Co)
+  partition "Ban To chuc" {
+    :Doi chieu cau hinh giai thuong;
+  }
+  partition "Don vi bao tro" {
+    :Xac nhan giai thuong bao tro neu co;
+  }
+else (Khong)
+  partition "Ban To chuc" {
+    :Chi xet cac giai da duoc cau hinh;
+  }
+endif
+
+partition "He thong" {
+  :Tong hop danh sach trao giai;
+  :Kiem tra dung doi tuong\nca nhan / ekip;
+}
+
+partition "Ban To chuc" {
+  :Phe duyet danh sach trao giai;
+  :Cong bo ket qua chang;
+  :Trao giai thuong sau chang;
+}
+
+partition "He thong" {
+  :Luu ket qua, xep hang va lich su trao giai;
+}
+
+stop
+@enduml
