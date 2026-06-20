@@ -547,3 +547,127 @@ Thiet ke dat muc 3NF o cac diem chinh:
 - Don vi bao tro va lan bao tro theo nam duoc tach qua `DONVIBAOTRO` va `BAOTROCUOCDUA`.
 - Giai thuong va nguoi/ekip duoc trao giai duoc tach qua `GIAITHUONG` va `TRAOGIAI`.
 - Ket qua tung chang la bang nghiep vu trung tam, tu do tinh ao xanh, ao vang, xep hang ca nhan, xep hang ekip va cac thong so ky thuat.
+
+## 10. Use Case Diagram tong quat
+
+### 10.1. Tac nhan chinh
+
+| Tac nhan | Vai tro trong he thong |
+| --- | --- |
+| `Ban To Chuc` | Quan tri toan bo cuoc dua, cau hinh chang dua, tiep nhan dang ky, tinh ket qua va cong bo giai thuong |
+| `Don Vi Du Thi` | Dang ky ekip, cap nhat thong tin VDV va nhan su ekip |
+| `Trong Tai / Bo Phan Ky Thuat` | Ghi nhan ket qua tung chang, xac nhan VDV khong hoan tat, cap nhat thoi gian ve dich |
+| `Don Vi Bao Tro` | Dang ky bao tro, cap nhat thong tin tai tro va quyen loi quang cao |
+| `Dia Phuong Dich` | Cung cap giai thuong dia phuong cho cac hang dau cua chang |
+| `Khach Xem / Bao Chi` | Tra cuu lich dua, ket qua chang, bang xep hang va giai thuong |
+
+### 10.2. So do Use Case
+
+```plantuml
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Ban To Chuc" as BTC
+actor "Don Vi Du Thi" as DVDT
+actor "Trong Tai /\nBo Phan Ky Thuat" as TT
+actor "Don Vi Bao Tro" as DVBT
+actor "Dia Phuong Dich" as DPD
+actor "Khach Xem /\nBao Chi" as KX
+
+rectangle "He thong quan ly Cup truyen hinh TP.HCM" {
+    usecase "Quan ly cuoc dua\nhang nam" as UC_RACE
+    usecase "Quan ly chang dua" as UC_STAGE
+    usecase "Cau hinh chang\ntinh gio" as UC_TIME_STAGE
+    usecase "Cau hinh chang\nnuoc rut" as UC_SPRINT_STAGE
+    usecase "Tiep nhan dang ky\ndon vi du thi" as UC_REGISTER_UNIT
+    usecase "Quan ly ekip" as UC_TEAM
+    usecase "Quan ly van dong vien" as UC_RIDER
+    usecase "Quan ly nhan su,\nxe va dien thoai ekip" as UC_STAFF
+
+    usecase "Quan ly don vi\nbao tro" as UC_SPONSOR
+    usecase "Quan ly giai thuong" as UC_AWARD
+    usecase "Quan ly giai\nBan To chuc" as UC_ORG_AWARD
+    usecase "Quan ly giai\ndia phuong" as UC_LOCAL_AWARD
+    usecase "Quan ly giai\nbao tro" as UC_SPONSOR_AWARD
+
+    usecase "Ghi nhan ket qua\nchang dua" as UC_STAGE_RESULT
+    usecase "Xac nhan VDV\nkhong hoan tat" as UC_DNF
+    usecase "Tinh phat/thuong\nthoi gian" as UC_ADJUST_TIME
+    usecase "Tinh xep hang\nca nhan" as UC_PERSON_RANK
+    usecase "Tinh xep hang\nekip" as UC_TEAM_RANK
+    usecase "Xac dinh ao xanh\nthang chang" as UC_GREEN
+    usecase "Xac dinh ao vang\nchung cuoc" as UC_YELLOW
+    usecase "Trao giai thuong" as UC_GIVE_AWARD
+
+    usecase "Tra cuu lich dua\nva thong tin chang" as UC_VIEW_SCHEDULE
+    usecase "Tra cuu ket qua\nchang" as UC_VIEW_STAGE_RESULT
+    usecase "Tra cuu bang\nxep hang" as UC_VIEW_RANK
+    usecase "Tra cuu danh sach\ngiai thuong" as UC_VIEW_AWARD
+    usecase "Lap bao cao\nthong so ky thuat" as UC_REPORT
+}
+
+BTC --> UC_RACE
+BTC --> UC_STAGE
+BTC --> UC_REGISTER_UNIT
+BTC --> UC_TEAM
+BTC --> UC_RIDER
+BTC --> UC_STAFF
+BTC --> UC_SPONSOR
+BTC --> UC_AWARD
+BTC --> UC_STAGE_RESULT
+BTC --> UC_PERSON_RANK
+BTC --> UC_TEAM_RANK
+BTC --> UC_GIVE_AWARD
+BTC --> UC_REPORT
+
+DVDT --> UC_REGISTER_UNIT
+DVDT --> UC_TEAM
+DVDT --> UC_RIDER
+DVDT --> UC_STAFF
+DVDT --> UC_VIEW_STAGE_RESULT
+DVDT --> UC_VIEW_RANK
+
+TT --> UC_STAGE_RESULT
+TT --> UC_DNF
+TT --> UC_ADJUST_TIME
+TT --> UC_REPORT
+
+DVBT --> UC_SPONSOR
+DVBT --> UC_SPONSOR_AWARD
+DVBT --> UC_VIEW_AWARD
+
+DPD --> UC_LOCAL_AWARD
+DPD --> UC_VIEW_STAGE_RESULT
+
+KX --> UC_VIEW_SCHEDULE
+KX --> UC_VIEW_STAGE_RESULT
+KX --> UC_VIEW_RANK
+KX --> UC_VIEW_AWARD
+
+UC_STAGE <|-- UC_TIME_STAGE
+UC_STAGE <|-- UC_SPRINT_STAGE
+UC_AWARD <|-- UC_ORG_AWARD
+UC_AWARD <|-- UC_LOCAL_AWARD
+UC_AWARD <|-- UC_SPONSOR_AWARD
+
+UC_STAGE_RESULT ..> UC_ADJUST_TIME : <<include>>
+UC_STAGE_RESULT ..> UC_GREEN : <<include>>
+UC_STAGE_RESULT ..> UC_DNF : <<extend>>
+UC_PERSON_RANK ..> UC_YELLOW : <<include>>
+UC_GIVE_AWARD ..> UC_PERSON_RANK : <<include>>
+UC_GIVE_AWARD ..> UC_TEAM_RANK : <<include>>
+UC_GIVE_AWARD ..> UC_AWARD : <<include>>
+UC_REPORT ..> UC_STAGE_RESULT : <<include>>
+UC_REPORT ..> UC_PERSON_RANK : <<include>>
+UC_REPORT ..> UC_TEAM_RANK : <<include>>
+@enduml
+```
+
+### 10.3. Ghi chu quan he Use Case
+
+- `Ghi nhan ket qua chang dua` include `Tinh phat/thuong thoi gian` vi moi ket qua chinh thuc deu can quy doi ve `ThoiGianTinhGiay`.
+- `Xac nhan VDV khong hoan tat` la use case mo rong cua ghi nhan ket qua, chi xay ra khi VDV bi chan thuong hoac khong hoan thanh chang.
+- `Xac dinh ao xanh thang chang` duoc thuc hien sau khi co thu hang ve dich cua chang.
+- `Xac dinh ao vang chung cuoc` duoc thuc hien tu bang tong thoi gian ca nhan toan cuoc.
+- `Trao giai thuong` include xep hang ca nhan, xep hang ekip va cau hinh giai thuong de xac dinh dung doi tuong nhan giai.
